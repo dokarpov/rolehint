@@ -1,5 +1,5 @@
 """Anonymous, read-only live vacancy preview. No candidate persistence or fabricated results."""
-import os,re,time,asyncio
+import os,re,time,asyncio,httpx
 from urllib.parse import urlparse
 from fastapi import APIRouter,HTTPException,Request
 from .services.job_search import JobSearchService
