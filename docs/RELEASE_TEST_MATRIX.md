@@ -131,3 +131,23 @@ Decision: BLOCKED | PRIVATE TEST | PUBLIC APPROVED
 \`\`\`
 
 **Do not stamp PUBLIC APPROVED until every public-promise gate is passed.**
+
+## Mandatory mobile-first UX gate (2026-10-21)
+
+**Scope:** public site, anonymous onboarding, authenticated workspace, all dialogs, errors, empty/loading/success states. A feature is NOT accepted when backend works but the mobile experience fails.
+
+**Evidence-led references:** Simplify iOS uses one actionable vacancy card at a time with progressive details; Simplify's CV import extracts an editable profile; Huntr separates compact tracking and deeper detail. Borrow interaction principles, not styling, screenshots, or unverified performance claims.
+
+**Hard acceptance criteria (all required):**
+1. At 320, 375, 390 and 430 CSS px and desktop 1280 px: no horizontal scroll, overlapping labels, clipped buttons, or obscured content. Test actual iPhone Safari, not screenshots alone.
+2. Initial 390×844 viewport: one clear promise, one primary CV action, concise privacy statement; optional role input is collapsed. No forced email, Telegram or payment before meaningful analysis. Target primary action visible without scrolling.
+3. After CV upload: real nonempty analysis and specific next action; visible progress, error and retry. User can discard without signup. Save CTA appears only **after** useful output. No invented matches.
+4. All interactive controls ≥44×44 CSS px touch targets; ≥12 px gap between adjacent actions; ≥16 px between content sections; no colliding margins at any state.
+5. Consistent monochrome system: white, black, neutral gray for surfaces, text and controls; green only success, amber only caution, red only errors. Never use color alone to communicate status.
+6. Keyboard focus visible, descriptive labels, screen-reader live announcements, reduced-motion support, readable contrast (WCAG AA), no inaccessible disclosure content.
+7. Test empty, loading, slow network, invalid format, oversized/scanned CV, 403/429/500, network retry, analysis success, discard, login unavailable, session expired, save-after-login and return on another device.
+8. Source-of-truth components/tokens shared across public site and app. No one-off spacing exceptions without a documented reason.
+9. Capture reproducible browser screenshots and interaction recording at each breakpoint and state, and attach CI run/deployment SHA. Automated DOM/visual regression checks plus real iPhone Safari verification required.
+10. Staging origin and environment config validated with real multipart CV POST, not merely /health. Explicitly verify no CV data stored on anonymous request and no false save success.
+
+**Release status:** BLOCKED until the full gate has evidence. CSS commits and Railway SUCCESS are not UX acceptance.
