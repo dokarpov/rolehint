@@ -53,6 +53,14 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
                 "posted_at":item.get("publication_date")})
     except (httpx.HTTPError,ValueError,KeyError):
         if not raw:raise HTTPException(503,"Job feeds are unavailable. Please retry shortly.")
+    role_aliases={
+        "product manager":["product manager","product owner","product lead","head of product"],
+        "project manager":["project manager","program manager","programme manager"],
+        "product designer":["product designer","ux designer","design lead"],
+        "software engineer":["software engineer","software developer","backend engineer","frontend engineer"],
+        "data analyst":["data analyst","business intelligence analyst"],
+    }
+    accepted=role_aliases.get(role.lower(),[role.lower()])
     output=[]
     seen=set()
     for j in raw:
@@ -61,7 +69,7 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
         desc=re.sub(r"<[^>]+>"," ",j.get("description") or "")
         title_terms=_tokens(title)
         overlap=role_terms & title_terms
-        if not _valid(url) or not title or not overlap:continue
+        if not _valid(url) or not title or not (any(a in title.lower() for a in accepted) or len(overlap)>=min(2,len(role_terms))):continue
         key=(str(j.get("company") or "").lower(),title.lower())
         if key in seen:continue
         seen.add(key)
