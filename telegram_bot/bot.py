@@ -42,7 +42,7 @@ async def start(msg):
     if len(command)==2 and command[1].startswith("web_"):
         try:
             result=await backend("POST","/web-api/telegram/bot-issue",{"state":command[1][4:],"telegram_user":{"id":u["id"],"first_name":u.get("first_name",""),"username":u.get("username","")}})
-            return await send(cid,"<b>RoleHint web sign-in</b>\\n\\nEnter this one-time code in the web page: <code>"+html.escape(result["code"])+"</code>\\n\\nExpires in 10 minutes. Never share this code.")
+            return await send(cid,"<b>RoleHint web sign-in</b>\n\nEnter this one-time code in the web page: <code>"+html.escape(result["code"])+"</code>\n\nExpires in 10 minutes. Never share this code.")
         except Exception:
             return await send(cid,"This web sign-in link has expired or is invalid. Start a new sign-in from the RoleHint website.")
     data=await summary(u["id"])
