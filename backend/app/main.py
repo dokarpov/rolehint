@@ -30,8 +30,10 @@ from .services.autopilot import EvidenceAutopilot, ensure_search_profiles
 from .services.funnel import weekly_plan, DEFAULT_POLICY, PACE_PRESETS, BREADTH_PRESETS, normalize_policy, submission_candidate
 from .services.connectors.gmail import GmailConnector, parse_job_email
 from .web_identity import init_routes as web_identity_routes
+from .anonymous_jobs import router as anonymous_jobs_router
 
 app=FastAPI(title="Career Fit Agent API",version="1.8.0")
+app.include_router(anonymous_jobs_router)
 
 @app.middleware("http")
 async def beta_access_guard(request: Request, call_next):
