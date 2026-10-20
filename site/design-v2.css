@@ -73,3 +73,16 @@ header.site-header{background:#f1f1ecef;border-bottom-color:#d3d6d0}
 .end-section .eyebrow{color:#bfd0c5}
 .end-section .btn{background:#f5f7f2;color:#1d2923;border-color:#f5f7f2}
 @media(prefers-reduced-motion:reduce){.hero:before{animation:none}}
+
+/* Global monochrome UI contract: color reserved for semantic status only. */
+:root{--ink:#111;--muted:#555;--line:#ddd;--bg:#fff;--purple:#111;--lavender:#f4f4f4;--success:#197b48;--warning:#b66b00;--error:#b42318}
+body{background:#fff;color:#111}
+button,a,input,select,textarea{accent-color:#111}
+button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #555;outline-offset:3px}
+.btn{background:#111;color:#fff;border-color:#111}
+.btn:hover{background:#333}
+.nav-links,.hero-copy,.footer-inner,.benefits,.story-tabs,.preview-side{gap:16px}
+button+button,.btn+.btn{margin-left:0}
+[aria-invalid=true],.error{color:var(--error)}
+.status-success{color:var(--success)}.status-warning{color:var(--warning)}.status-error{color:var(--error)}
+@media(max-width:720px){.container{width:min(calc(100% - 32px),560px)}.nav-links,.hero-copy{gap:12px}}
