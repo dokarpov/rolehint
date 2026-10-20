@@ -18,6 +18,10 @@ try{
     });
     await page.goto('http://127.0.0.1:8789/webapp/',{waitUntil:'networkidle'});
     if(!(await page.getByRole('heading',{name:/Find work worth/}).isVisible()))throw Error('missing hero '+width);
+    const unlabeled=await page.evaluate(()=>[...document.querySelectorAll('input,textarea,select')].filter(x=>!x.labels?.length && !x.getAttribute('aria-label')).map(x=>x.id||x.tagName));
+    if(unlabeled.length)throw Error('Unlabeled form fields '+width+': '+unlabeled.join(','));
+    if((await page.locator('h1').count())!==2)throw Error('Expected separate guest and account headings for conditional views '+width);
+
     const docWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
     if(docWidth>width+2)throw Error('horizontal overflow '+width+' '+docWidth);
     await page.locator('#first-role').fill('Senior Product Manager');
@@ -29,7 +33,7 @@ try{
     await page.close();
     console.log('PASS anonymous mobile-first role/auth gate',width);
   }
-  const page=await browser.newPage({viewport:{width:390,height:844}});
+  for(const width of [390,1280]){const page=await browser.newPage({viewport:{width,height:844}});
   await page.route('**/web-api/**',async route=>{
     const u=route.request().url();let body={};
     if(u.endsWith('/me'))body={authenticated:true,preferences:{remote_only:true,salary_floor_annual:85000},search_profiles:[{query:'Product Manager'}],jobs:[{job_id:'ashby:123',title:'Product Manager',company:'Example employer',source_url:'https://jobs.example.org/123'}],free_used:1,free_limit:10};
@@ -52,5 +56,5 @@ try{
   if(!(await page.locator('#contractor').isChecked()))throw Error('saved B2B preference missing');
   if(!(await page.getByRole('button',{name:'Open employer application form'}).isVisible()))throw Error('review/handoff missing');
   console.log('PASS authenticated workspace fixtures and vacancy source URL');
-  await page.close();
+  await page.close();}
 }finally{await browser.close();server.kill();}
