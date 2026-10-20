@@ -7,12 +7,16 @@ try{
   await delay(900);
   for(const width of [320,375,390,768,1440]){
     const page=await browser.newPage({viewport:{width,height:780},isMobile:width<500,hasTouch:width<500});
-    const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    const errors=[];page.on('pageerror',e=>errors.push(e.message));let telegramAuthenticated=false;
     await page.route('**/web-api/**',async route=>{
       const url=new URL(route.request().url());
       const pathname=url.pathname;
       const respond=data=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
-      if(pathname.endsWith('/me')) return route.fulfill({status:401,contentType:'application/json',body:'{"detail":"Please sign in"}'});
+      if(pathname.endsWith('/me')) return telegramAuthenticated?respond({authenticated:true,preferences:{remote_only:false,salary_floor_annual:0},search_profiles:[],jobs:[],free_used:0,free_limit:10}):route.fulfill({status:401,contentType:'application/json',body:'{"detail":"Please sign in"}'});
+      if(pathname.endsWith('/telegram/begin'))return respond({url:'https://t.me/rolehint_test_bot?start=web_sample',message:'Open Telegram'});
+      if(pathname.endsWith('/telegram/complete')){telegramAuthenticated=true;return respond({ok:true})}
+      if(pathname.endsWith('/cv'))return respond({uploaded:false});
+      if(pathname.endsWith('/release-state'))return respond({contractor_only:false,opportunities:[],application_history:[]});
       if(pathname.endsWith('/auth-status')) return respond({email_login_available:false});
       return route.fulfill({status:503,contentType:'application/json',body:'{"detail":"Unavailable"}'});
     });
@@ -29,6 +33,13 @@ try{
     if(!(await page.locator('#auth-zone').isVisible()))throw Error('no auth transition '+width);
     if(!(await page.locator('#email-button').isDisabled()))throw Error('unconfigured login should be disabled '+width);
     if((await page.evaluate(()=>sessionStorage.getItem('rolehint_intended_role')))!=='Senior Product Manager')throw Error('role not persisted '+width);
+    page.on('popup',async p=>{try{await p.close()}catch{}});
+    await page.getByRole('button',{name:'Sign in with Telegram'}).click();
+    await page.locator('#telegram-code-zone').waitFor({state:'visible',timeout:5000});
+    await page.locator('#telegram-code').fill('12345678');
+    await page.getByRole('button',{name:'Complete sign-in'}).click();
+    await page.locator('#member').waitFor({state:'visible',timeout:5000});
+    if((await page.locator('#target-role').inputValue())!=='Senior Product Manager')throw Error('intended role lost on login '+width);
     if(errors.length)throw Error('page errors '+width+': '+errors.join('; '));
     await page.close();
     console.log('PASS anonymous mobile-first role/auth gate',width);
