@@ -2,7 +2,7 @@
 
 ## Start here — product knowledge and release plan
 
-**[Knowledge base](docs/RELEASE_KNOWLEDGE_BASE.md)** · **[Iterative roadmap](docs/RELEASE_ROADMAP.md)** · **[Current code/deployment audit](docs/RELEASE_BASELINE_2026-10-20.md)** · **[Reproducible QA matrix](docs/RELEASE_TEST_MATRIX.md)** · **[Approved product CJM](docs/PRODUCT_EXPERIENCE_V1.md)**
+**[Knowledge base](docs/RELEASE_KNOWLEDGE_BASE.md)** · **[Iterative roadmap](docs/RELEASE_ROADMAP.md)** · **[Current code/deployment audit](docs/RELEASE_BASELINE_2026-10-20.md)** · **[Reproducible QA matrix](docs/RELEASE_TEST_MATRIX.md)** · **[Approved product CJM](docs/PRODUCT_EXPERIENCE_V1.md)** · [Web release ADR](docs/adr/ADR-002-web-release-boundaries.md)
 
 **Release status: BLOCKED for public launch.** Production code has a deployed authenticated web application and automated release tests, but the complete real-user production journey (Telegram OTP → confirmed CV → actual qualified open ATS job → accurate application → manual handoff → tracked outcome across devices) has **not** been independently accepted. Do not describe CI smoke checks as production E2E.
 
