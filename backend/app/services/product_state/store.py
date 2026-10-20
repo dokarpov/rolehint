@@ -1,6 +1,7 @@
 from __future__ import annotations
 import sqlite3, json, time, uuid, os
 from pathlib import Path
+from .application_analytics import migrate as migrate_application_analytics, record_event as record_application_event, timeline as application_timeline, funnel as application_funnel
 
 SCHEMA = """
 PRAGMA foreign_keys=ON;
@@ -321,6 +322,16 @@ class ProductStore:
         self.conn=sqlite3.connect(str(path),check_same_thread=False)
         self.conn.row_factory=sqlite3.Row
         self.conn.executescript(SCHEMA)
+        migrate_application_analytics(self.conn)
+
+    def record_application_event(self,user_id,job_id,event_key,stage,source,confirmed=False,occurred_at=None):
+        return record_application_event(self.conn,user_id,job_id,event_key,stage,source,confirmed,occurred_at)
+
+    def application_timeline(self,user_id,job_id):
+        return application_timeline(self.conn,user_id,job_id)
+
+    def application_funnel(self,user_id):
+        return application_funnel(self.conn,user_id)
 
     def now(self): return time.time()
     def uid(self,prefix): return f"{prefix}_{uuid.uuid4().hex[:12]}"
