@@ -25,6 +25,9 @@ def init(conn):
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       source_name TEXT NOT NULL, text_content TEXT NOT NULL,
       evidence_json TEXT NOT NULL, updated_at REAL NOT NULL);
+    CREATE TABLE IF NOT EXISTS web_cv_confirmations(
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      cv_hash TEXT NOT NULL, confirmed_at REAL NOT NULL);
     CREATE TABLE IF NOT EXISTS web_telegram_challenges(
       challenge_id TEXT PRIMARY KEY, browser_hash TEXT NOT NULL,
       user_id TEXT, code_hash TEXT, tries INTEGER NOT NULL DEFAULT 0,
@@ -231,13 +234,26 @@ def init_routes(product):
         return {"authenticated":True,"preferences":prefs,"search_profiles":profiles,
                 "jobs":jobs[:10],"free_limit":10,"free_used":min(10,len(jobs))}
 
+    def replace_cv_evidence(uid,evidence):
+        # Imported text remains self-reported; never silently upgrade it to verified.
+        conn.execute("DELETE FROM user_evidence WHERE user_id=? AND source_type='cv' AND source_ref='candidate-cv'",(uid,))
+        for item in evidence[:40]:
+            item["status"]="needs-review"
+            item["direct"]=False
+            item["boundary"]="Imported self-reported CV statement. User confirmation is not external verification."
+            product.upsert_user_evidence(uid,item)
+        conn.execute("DELETE FROM web_cv_confirmations WHERE user_id=?",(uid,))
+        conn.commit()
+
     @router.get("/cv")
     def read_cv(request:Request):
         uid=require_user(request)
         row=conn.execute("SELECT source_name,text_content,evidence_json,updated_at FROM web_candidate_profiles WHERE user_id=?",(uid,)).fetchone()
         if not row:return {"uploaded":False}
+        confirmation=conn.execute("SELECT cv_hash FROM web_cv_confirmations WHERE user_id=?",(uid,)).fetchone()
+        confirmed=bool(confirmation and hmac.compare_digest(confirmation["cv_hash"],token_hash(row["text_content"])))
         return {"uploaded":True,"file_name":row["source_name"],"text":row["text_content"],
-                "evidence":json.loads(row["evidence_json"]),"updated_at":row["updated_at"]}
+                "evidence":json.loads(row["evidence_json"]),"confirmed":confirmed,"updated_at":row["updated_at"]}
 
     @router.post("/cv")
     async def upload_cv(request:Request,file:UploadFile=File(...)):
@@ -266,7 +282,8 @@ def init_routes(product):
           text_content=excluded.text_content,evidence_json=excluded.evidence_json,updated_at=excluded.updated_at""",
           (uid,name,content,json.dumps(evidence),now))
         conn.commit()
-        return {"uploaded":True,"file_name":name,"text":content,"evidence":evidence,"updated_at":now}
+        replace_cv_evidence(uid,evidence)
+        return {"uploaded":True,"file_name":name,"text":content,"evidence":evidence,"confirmed":False,"updated_at":now}
 
     @router.put("/cv")
     async def correct_cv(request:Request):
@@ -280,12 +297,26 @@ def init_routes(product):
         now=time.time()
         conn.execute("UPDATE web_candidate_profiles SET text_content=?,evidence_json=?,updated_at=? WHERE user_id=?",
                      (content,json.dumps(evidence),now,uid));conn.commit()
-        return {"uploaded":True,"file_name":existing["source_name"],"text":content,"evidence":evidence,"updated_at":now}
+        replace_cv_evidence(uid,evidence)
+        return {"uploaded":True,"file_name":existing["source_name"],"text":content,"evidence":evidence,"confirmed":False,"updated_at":now}
+
+    @router.post("/cv/confirm")
+    def confirm_cv(request:Request):
+        check_origin(request);uid=require_user(request)
+        row=conn.execute("SELECT text_content FROM web_candidate_profiles WHERE user_id=?",(uid,)).fetchone()
+        if not row:raise HTTPException(404,"Upload your CV first")
+        digest=token_hash(row["text_content"])
+        conn.execute("INSERT INTO web_cv_confirmations VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET cv_hash=excluded.cv_hash,confirmed_at=excluded.confirmed_at",(uid,digest,time.time()))
+        conn.commit()
+        return {"confirmed":True,"verification_level":"self-reported"}
 
     @router.delete("/cv")
     def delete_cv(request:Request):
         check_origin(request);uid=require_user(request)
-        conn.execute("DELETE FROM web_candidate_profiles WHERE user_id=?",(uid,));conn.commit()
+        conn.execute("DELETE FROM web_candidate_profiles WHERE user_id=?",(uid,))
+        conn.execute("DELETE FROM user_evidence WHERE user_id=? AND source_type='cv' AND source_ref='candidate-cv'",(uid,))
+        conn.execute("DELETE FROM web_cv_confirmations WHERE user_id=?",(uid,))
+        conn.commit()
         return {"deleted":True}
 
     @router.put("/preferences")
