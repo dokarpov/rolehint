@@ -348,4 +348,6 @@ def init_routes(product):
         response.delete_cookie(COOKIE,path="/")
         return response
 
+    from .web_release import bind_web_release
+    bind_web_release(router,product,require_user,check_origin)
     return router
