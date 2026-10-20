@@ -38,16 +38,19 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
     except Exception:raise HTTPException(503,"Live job sources are temporarily unavailable")
     terms=_tokens(cv_terms)
     role_terms=_tokens(role)
-    async with httpx.AsyncClient(timeout=12) as client:
-        response=await client.get("https://remotive.com/api/remote-jobs",params={"search":role,"limit":100})
-        response.raise_for_status()
-        feed=response.json()
-    for item in feed.get("jobs",[]):
-        raw.append({"source":"remotive","source_url":item.get("url",""),
-            "title":item.get("title",""),"company":item.get("company_name",""),
-            "location":item.get("candidate_required_location") or "Remote",
-            "remote":True,"description":item.get("description",""),
-            "posted_at":item.get("publication_date")})
+    try:
+        async with httpx.AsyncClient(timeout=12) as client:
+            response=await client.get("https://remotive.com/api/remote-jobs",params={"search":role,"limit":100})
+            response.raise_for_status()
+            feed=response.json()
+        for item in feed.get("jobs",[]):
+            raw.append({"source":"remotive","source_url":item.get("url",""),
+                "title":item.get("title",""),"company":item.get("company_name",""),
+                "location":item.get("candidate_required_location") or "Remote",
+                "remote":True,"description":item.get("description",""),
+                "posted_at":item.get("publication_date")})
+    except (httpx.HTTPError,ValueError,KeyError):
+        pass
     output=[]
     for j in raw:
         url=j.get("source_url") or ""
