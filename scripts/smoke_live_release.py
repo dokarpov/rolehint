@@ -37,13 +37,17 @@ def main():
     assert_http("Mini App enhancement JS", API + "/miniapp/ux-v2.js", 200)
     assert_http("Mini App styling", API + "/miniapp/ux-v2.css", 200)
     assert_http("web application", API + "/webapp/", 200, "Find work worth")
+    assert_http("Telegram web-login POST route exists", API + "/web-api/telegram/begin", 405)
+    assert_http("Telegram code verification POST route exists", API + "/web-api/telegram/complete", 405)
+    assert_http("anonymous job review denied", API + "/web-api/jobs/missing/review", 401)
+    assert_http("anonymous application export denied", API + "/web-api/jobs/missing/export", 401)
     assert_http("web authentication availability", API + "/web-api/auth-status", 200, "email_login_available")
     assert_http("anonymous web profile denied", API + "/web-api/me", 401)
     assert_http("anonymous CV denied", API + "/web-api/cv", 401)
     assert_http("anonymous application history denied", API + "/web-api/release-state", 401)
     assert_http("anonymous bootstrap blocked", API + "/me/bootstrap", 401)
     assert_http("legacy evidence blocked", API + "/evidence", 503)
-    assert_http("marketing website", SITE, 200, "Less searching.")
+    assert_http("marketing website links to real web app", SITE, 200, API + "/webapp/")
     print("Live read-only checks passed; this does not certify authenticated E2E.")
 
 if __name__ == "__main__":
