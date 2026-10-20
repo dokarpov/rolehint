@@ -54,22 +54,31 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
     except (httpx.HTTPError,ValueError,KeyError):
         if not raw:raise HTTPException(503,"Job feeds are unavailable. Please retry shortly.")
     output=[]
+    seen=set()
     for j in raw:
         url=j.get("source_url") or ""
         title=j.get("title") or ""
         desc=re.sub(r"<[^>]+>"," ",j.get("description") or "")
-        if not _valid(url) or not title or not role_terms.intersection(_tokens(title)):continue
+        title_terms=_tokens(title)
+        overlap=role_terms & title_terms
+        if not _valid(url) or not title or not overlap:continue
+        key=(str(j.get("company") or "").lower(),title.lower())
+        if key in seen:continue
+        seen.add(key)
         words=_tokens(desc)
         # Signals are keyword overlap, not calibrated percentages or verified qualifications.
         matched=sorted((terms & words)-role_terms)[:5] if terms else []
         missing=sorted((words & {"sql","python","figma","analytics","leadership","stakeholders","roadmap","experimentation","research","strategy","salesforce","aws","kubernetes"})-terms)[:5] if terms else []
-        output.append({"title":title[:180],"company":str(j.get("company") or "Employer")[:120],
+        rank=(len(overlap)*10 + len(matched)*2 - len(missing))
+        output.append({"_rank":rank,"title":title[:180],"company":str(j.get("company") or "Employer")[:120],
             "location":str(j.get("location") or "Not specified")[:130],
             "url":url,"source":j.get("source"),"posted_at":j.get("posted_at"),
             "fit":{"matched_terms":matched,"unconfirmed_terms":missing,
                 "label":"Partial evidence" if matched else "Not assessed",
                 "note":"Keyword signals only; eligibility, experience and vacancy status require verification."},
             "remote":j.get("remote"),"description_excerpt":desc[:350]})
-        if len(output)>=10:break
+    output.sort(key=lambda job:job["_rank"],reverse=True)
+    output=output[:10]
+    for job in output:job.pop("_rank",None)
     return {"sources_available":bool(feed_ok or raw),"role":role,"jobs":output,"count":len(output),"limit":10,
         "disclaimer":"Live source listings; not independently confirmed open. No numeric fit score or eligibility guarantee."}
