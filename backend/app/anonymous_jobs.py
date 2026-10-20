@@ -41,7 +41,7 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
     feed_ok=False
     try:
         async with httpx.AsyncClient(timeout=12) as client:
-            response=await client.get("https://remotive.com/api/remote-jobs",params={"search":role,"limit":100})
+            response=await client.get("https://remotive.com/api/remote-jobs",params={"limit":200})
             response.raise_for_status()
             feed=response.json()
             feed_ok=True
@@ -80,5 +80,5 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
     output.sort(key=lambda job:job["_rank"],reverse=True)
     output=output[:10]
     for job in output:job.pop("_rank",None)
-    return {"sources_available":bool(feed_ok or raw),"role":role,"jobs":output,"count":len(output),"limit":10,
+    return {"sources_available":bool(feed_ok or raw),"source_counts":{"received":len(raw),"eligible":len(output)},"role":role,"jobs":output,"count":len(output),"limit":10,
         "disclaimer":"Live source listings; not independently confirmed open. No numeric fit score or eligibility guarantee."}
