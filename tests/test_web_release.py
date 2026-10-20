@@ -40,7 +40,7 @@ def test_real_job_review_handoff_history(monkeypatch):
     stored=product.upsert_user_job(uid,j)
     job_id=stored["job_id"]
     with TestClient(app,base_url=BASE) as client:
-        client.cookies.set("rh_session",token,secure=True)
+        client.cookies.set("rh_session",token)
         assert client.get("/web-api/release-state").status_code==200
         r=client.get("/web-api/jobs/"+job_id+"/review")
         assert r.status_code==200,r.text
