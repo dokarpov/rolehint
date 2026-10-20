@@ -57,12 +57,12 @@ CREATE TABLE IF NOT EXISTS job_analytics.application_events (
 );
 CREATE INDEX IF NOT EXISTS application_events_history_idx ON job_analytics.application_events(application_id,occurred_at,id);
 CREATE INDEX IF NOT EXISTS applications_owner_idx ON job_analytics.applications(owner_key,created_at);
-CREATE VIEW job_analytics.stage_reach AS
+CREATE OR REPLACE VIEW job_analytics.stage_reach AS
 SELECT a.owner_key, a.id AS application_id, e.stage, min(e.occurred_at) AS first_reached_at
 FROM job_analytics.applications a JOIN job_analytics.application_events e ON e.application_id=a.id
 WHERE e.confirmed AND e.stage IN ('applied','screen','interview','final','offer')
 GROUP BY a.owner_key,a.id,e.stage;
-CREATE VIEW job_analytics.stage_funnel AS
+CREATE OR REPLACE VIEW job_analytics.stage_funnel AS
 SELECT owner_key,stage,count(DISTINCT application_id) AS reached
 FROM job_analytics.stage_reach GROUP BY owner_key,stage;
 COMMIT;
