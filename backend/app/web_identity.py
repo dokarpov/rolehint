@@ -2,10 +2,11 @@
 from __future__ import annotations
 import hashlib, hmac, os, re, secrets, smtplib, sqlite3, ssl, time, uuid, tempfile, json
 from email.message import EmailMessage
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Header
+from fastapi.responses import RedirectResponse, JSONResponse as ResponseJSON
 from pathlib import Path
 from .services.evidence_ingest import read_text, atomize_text
+import httpx
 
 router=APIRouter(prefix="/web-api")
 COOKIE="rh_session"
@@ -24,6 +25,10 @@ def init(conn):
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       source_name TEXT NOT NULL, text_content TEXT NOT NULL,
       evidence_json TEXT NOT NULL, updated_at REAL NOT NULL);
+    CREATE TABLE IF NOT EXISTS web_telegram_challenges(
+      challenge_id TEXT PRIMARY KEY, browser_hash TEXT NOT NULL,
+      user_id TEXT, code_hash TEXT, tries INTEGER NOT NULL DEFAULT 0,
+      expires_at REAL NOT NULL, consumed INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS web_sessions(
       token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
       expires_at REAL NOT NULL, created_at REAL NOT NULL);
@@ -75,6 +80,89 @@ def init_routes(product):
         base=os.getenv("CFA_WEB_APP_URL","").rstrip("/")
         if not base or not origin or not hmac.compare_digest(origin,base):
             raise HTTPException(403,"Invalid request origin")
+
+
+    @router.post("/telegram/begin")
+    async def begin_telegram(request:Request):
+        check_origin(request)
+        token=os.getenv("TELEGRAM_BOT_TOKEN","")
+        if not token:raise HTTPException(503,"Telegram login not configured")
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                response=await client.get("https://api.telegram.org/bot"+token+"/getMe")
+                response.raise_for_status()
+                info=response.json()
+            username=str((info.get("result") or {}).get("username") or "")
+            if not info.get("ok") or not re.fullmatch(r"[A-Za-z0-9_]{5,32}",username):raise ValueError("Bot unavailable")
+        except (httpx.HTTPError,ValueError):
+            raise HTTPException(503,"Telegram sign-in temporarily unavailable")
+        state=secrets.token_urlsafe(20)
+        binding=secrets.token_urlsafe(32)
+        now=time.time()
+        conn.execute("DELETE FROM web_telegram_challenges WHERE expires_at<?",(now-3600,))
+        conn.execute("INSERT INTO web_telegram_challenges(challenge_id,browser_hash,expires_at) VALUES(?,?,?)",
+                     (state,token_hash(binding),now+600))
+        conn.commit()
+        response=ResponseJSON({"url":"https://t.me/"+username+"?start=web_"+state,
+                               "message":"Open Telegram, then enter the code sent by the RoleHint bot."})
+        response.set_cookie("rh_tg_challenge",binding,secure=True,httponly=True,samesite="lax",max_age=600,path="/web-api/")
+        response.set_cookie("rh_tg_state",state,secure=True,httponly=True,samesite="lax",max_age=600,path="/web-api/")
+        response.headers["Cache-Control"]="no-store"
+        return response
+
+    @router.post("/telegram/bot-issue")
+    async def issue_telegram_code(request:Request,x_cfa_bot_secret:str|None=Header(default=None,alias="X-CFA-Bot-Secret")):
+        expected=os.getenv("CFA_INTERNAL_BOT_SECRET","")
+        if not expected or not x_cfa_bot_secret or not hmac.compare_digest(expected,x_cfa_bot_secret):
+            raise HTTPException(401,"Unauthorized")
+        data=await request.json()
+        state=str(data.get("state") or "")
+        user=data.get("telegram_user")
+        if not re.fullmatch(r"[A-Za-z0-9_-]{20,64}",state) or not isinstance(user,dict) or not isinstance(user.get("id"),int):
+            raise HTTPException(422,"Invalid challenge")
+        now=time.time()
+        row=conn.execute("SELECT challenge_id FROM web_telegram_challenges WHERE challenge_id=? AND expires_at>? AND user_id IS NULL AND consumed=0",(state,now)).fetchone()
+        if not row:raise HTTPException(400,"Challenge expired or already used")
+        uid=product.ensure_user(telegram_user=user)
+        code=str(secrets.randbelow(90000000)+10000000)
+        digest=token_hash(state+":"+code)
+        cur=conn.execute("UPDATE web_telegram_challenges SET user_id=?,code_hash=? WHERE challenge_id=? AND user_id IS NULL AND expires_at>? AND consumed=0",(uid,digest,state,now))
+        conn.commit()
+        if cur.rowcount!=1:raise HTTPException(400,"Challenge already used")
+        return {"code":code}
+
+    @router.post("/telegram/complete")
+    async def complete_telegram(request:Request):
+        check_origin(request)
+        state=request.cookies.get("rh_tg_state","")
+        binding=request.cookies.get("rh_tg_challenge","")
+        if not state or len(binding)<30:raise HTTPException(401,"Begin sign-in again")
+        data=await request.json()
+        code=str(data.get("code") or "")
+        if not re.fullmatch(r"[0-9]{8}",code):raise HTTPException(422,"Enter the 8-digit Telegram code")
+        now=time.time()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            row=conn.execute("SELECT * FROM web_telegram_challenges WHERE challenge_id=? AND browser_hash=? AND expires_at>? AND consumed=0",
+                             (state,token_hash(binding),now)).fetchone()
+            if not row or not row["user_id"] or row["tries"]>=5:raise ValueError("Invalid or expired login")
+            conn.execute("UPDATE web_telegram_challenges SET tries=tries+1 WHERE challenge_id=?",(state,))
+            if not hmac.compare_digest(str(row["code_hash"] or ""),token_hash(state+":"+code)):
+                conn.commit()
+                raise HTTPException(401,"Incorrect or expired login code")
+            conn.execute("UPDATE web_telegram_challenges SET consumed=1 WHERE challenge_id=?",(state,))
+            session=secrets.token_urlsafe(48)
+            conn.execute("INSERT INTO web_sessions VALUES(?,?,?,?)",(token_hash(session),row["user_id"],now+86400*14,now))
+            conn.commit()
+        except (sqlite3.Error,ValueError):
+            conn.rollback()
+            raise HTTPException(401,"Invalid or expired login")
+        response=ResponseJSON({"ok":True})
+        response.set_cookie(COOKIE,session,max_age=86400*14,secure=True,httponly=True,samesite="lax",path="/")
+        response.delete_cookie("rh_tg_challenge",path="/web-api/")
+        response.delete_cookie("rh_tg_state",path="/web-api/")
+        response.headers["Cache-Control"]="no-store"
+        return response
 
     @router.get("/auth-status")
     def auth_status():
