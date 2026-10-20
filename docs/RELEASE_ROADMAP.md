@@ -24,6 +24,14 @@ The first interaction must create meaningful value **before** email, Telegram, a
 
 **Ordering adjustment:** deliver the anonymous first-value slice alongside I1/I2, before advertising public access; I7 remains the ten-opportunity and ten-tailored-application expansion, not the first time an anonymous user receives value.
 
+## I3a — anonymous discovery, dual-entry progressive flow (2026-10-21)
+
+**Founder-approved screen sequence:** (1) CV upload **or visible role search with immediate suggestions**, (2) up to ten live vacancies with source URL, eligibility, evidence-backed fit and gaps per job, (3) Telegram opt-in **after** list end to receive new matches. One mobile screen per step; no generic CV-insight screen or login wall before jobs. Show fewer than ten truthfully when supply is limited; show zero-state and retry. Never invent vacancies or claim precise fit without sufficient evidence.
+
+**Technical dependency:** current `/web-api/anonymous/cv-analysis` only extracts CV evidence; it does not search vacancies. Introduce bounded read-only `/web-api/anonymous/jobs` adapter to existing JobSearchService, with role inference/confirmation, query normalization, per-IP rate limits, safe ATS allowlist, URL freshness checks, remote/geography/B2B eligibility tri-state, provenance and no persistent candidate record. Provide an explicit role correction field before discovery. Fit should show supported requirements, unsupported gaps and unknowns; percentages only when calibrated against verified requirements. Anonymous preview is not a quota debit. Telegram opt-in requires a real configured provider; no misleading email fallback.
+
+**Acceptance:** actual 320–430px Safari flow, role autosuggestions (keyboard and touch), CV→jobs and role→jobs, 10-or-fewer real URLs validated, per-job fit/gap expansion, load/zero/error/retry, back navigation, no signup before results, Telegram CTA only at end, security/privacy/cost tests and deployed SHA evidence. **Status: NOT IMPLEMENTED / BLOCKED until tested.**
+
 ## Two release thresholds
 
 **Private testable vertical slice (PT):** A new test candidate uses one approved sign-in option, imports a CV, saves and confirms its text, specifies role/remote/country/B2B, receives at least one fresh real vacancy if available, reviews fit, saves an honest application pack, opens the employer form after consent, confirms submission manually and sees the outcome after logging in again. Zero-source outcome must also work. No fictional record or automatic-submit claim.
