@@ -27,9 +27,15 @@ def test_cv_auth_and_lifecycle(monkeypatch):
         assert result.status_code==200,result.text
         assert result.json()["uploaded"] is True
         assert browser.get("/web-api/cv").json()["text"]==text.strip()
+        assert browser.get("/web-api/cv").json()["confirmed"] is False
+        confirmed=browser.post("/web-api/cv/confirm",headers={"Origin":base})
+        assert confirmed.status_code==200,confirmed.text
+        assert confirmed.json()["verification_level"]=="self-reported"
+        assert browser.get("/web-api/cv").json()["confirmed"] is True
         revised=text+"Owned roadmap prioritization with the product team."
         result=browser.put("/web-api/cv",headers={"Origin":base},json={"text":revised})
         assert result.status_code==200,result.text
         assert browser.get("/web-api/cv").json()["text"]==revised
+        assert browser.get("/web-api/cv").json()["confirmed"] is False
         assert browser.delete("/web-api/cv",headers={"Origin":base}).json()["deleted"] is True
         assert browser.get("/web-api/cv").json()["uploaded"] is False

@@ -32,8 +32,12 @@ try{
   const page=await browser.newPage({viewport:{width:390,height:844}});
   await page.route('**/web-api/**',async route=>{
     const u=route.request().url();let body={};
-    if(u.endsWith('/me'))body={authenticated:true,preferences:{remote_only:true,salary_floor_annual:85000},search_profiles:[{query:'Product Manager'}],jobs:[{title:'Product Manager',company:'Example employer',source_url:'https://jobs.example.org/123'}],free_used:1,free_limit:10};
+    if(u.endsWith('/me'))body={authenticated:true,preferences:{remote_only:true,salary_floor_annual:85000},search_profiles:[{query:'Product Manager'}],jobs:[{job_id:'ashby:123',title:'Product Manager',company:'Example employer',source_url:'https://jobs.example.org/123'}],free_used:1,free_limit:10};
     else if(u.endsWith('/auth-status'))body={email_login_available:false};
+    else if(u.endsWith('/release-state'))body={contractor_only:true,opportunities:[],application_history:[]};
+    else if(u.endsWith('/cv'))body={uploaded:false};
+    else if(u.endsWith('/review'))body={job_id:'ashby:123',title:'Product Manager',company:'Example employer',requirements:[{label:'product strategy',mustHave:true}],proposal:{interview_risks:[]},final_action:'VERIFY_FIRST',contractor_status:'unconfirmed',freshness:'Employer source refreshed',constraints:{}};
+    else if(u.endsWith('/pack'))body={data:{role:{company:'Example employer',title:'Product Manager'},positioning:'',recruiter_note:'',proof_cards:[],short_answers:[],interview_risks:[]}};
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
   });
   await page.goto('http://127.0.0.1:8789/webapp/',{waitUntil:'networkidle'});
@@ -42,6 +46,11 @@ try{
   const link=page.getByRole('link',{name:'Product Manager'});
   if(!(await link.isVisible()))throw Error('real vacancy absent');
   if((await link.getAttribute('href'))!=='https://jobs.example.org/123')throw Error('incorrect employer URL');
+  await page.getByRole('button',{name:'Review fit & prepare'}).click();
+  await page.getByText('Required: product strategy').waitFor({state:'visible',timeout:6000});
+  await page.getByText(/B2B contractor status: unconfirmed/).waitFor({state:'visible',timeout:6000});
+  if(!(await page.locator('#contractor').isChecked()))throw Error('saved B2B preference missing');
+  if(!(await page.getByRole('button',{name:'Open employer application form'}).isVisible()))throw Error('review/handoff missing');
   console.log('PASS authenticated workspace fixtures and vacancy source URL');
   await page.close();
 }finally{await browser.close();server.kill();}

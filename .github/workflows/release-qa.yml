@@ -1,6 +1,11 @@
 name: Public site release QA
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'webapp/**'
+      - '.github/workflows/release-qa.yml'
   push:
     branches: [main]
     paths:
