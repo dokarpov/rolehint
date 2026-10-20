@@ -4,10 +4,23 @@ on:
     branches: [feature/job-analytics-foundation]
     paths:
       - 'analytics/**'
+      - 'backend/app/services/product_state/**'
+      - 'backend/tests/test_application_analytics.py'
       - '.github/workflows/analytics-foundation.yml'
   workflow_dispatch:
 
 jobs:
+  sqlite-analytics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: SQLite analytics tests
+        env:
+          PYTHONPATH: backend
+        run: python -m unittest discover -s backend/tests -p test_application_analytics.py -v
   postgres-smoke:
     runs-on: ubuntu-latest
     services:
