@@ -1,6 +1,6 @@
 # RoleHint — iterative implementation roadmap
 
-**Version:** 1.0 · **Updated:** 2026-10-20 · **Owner:** Product/engineering  
+**Version:** 1.1 · **Updated:** 2026-10-21 · **Owner:** Product/engineering  
 **Target:** smallest *complete and reliable* browser release, while preserving the backend, ATS discovery, decision policies and application history already built.  
 **Present state:** **BLOCKED** (see [dated audit](RELEASE_BASELINE_2026-10-20.md)); automated CI success is not user E2E acceptance.
 
@@ -13,6 +13,16 @@
 - Each milestone generates **(a)** a reproducible build, **(b)** test evidence with run IDs and fixtures, **(c)** documented known limitations, **(d)** rollback reference.
 - If an upstream dependency fails, **stop** that release gate instead of hiding it behind a fake result.
 - **No automatic merge or deployment considered release acceptance.** Release ownership remains with the founder after the evidence-based gate.
+
+## Binding value-first activation gate (2026-10-21)
+
+The first interaction must create meaningful value **before** email, Telegram, account creation, trial, or payment. Anonymous visitor uploads a CV (PDF/DOCX/TXT), sees extracted career evidence and actionable, honest insights, and may preview real ATS opportunities without an identity requirement. Signup is offered to **save and resume** the analysis, not to reveal its first useful result. Trial unlocks repeated application preparation and automation only after free value is demonstrated; payment comes after trial value and explicit terms. Never imply ten delivered jobs or generated CVs until validated. No fictitious vacancy, invented credential, or fabricated fit score.
+
+**Immediate implementation slice:** anonymous upload → ephemeral structured analysis and provenance → visible insight → optional sign-in → user-approved transfer of analysis to account → cross-device restore → real vacancy preview. Privacy: anonymous uploads are not saved to persistent candidate records without explicit consent; enforce upload limits, short-lived processing, and deletion. Keep existing authenticated routes intact. **Exit:** browser E2E on iPhone and desktop, negative/recovery tests, live ATS verification and cost telemetry; no green status from code-only tests.
+
+**Conversion instrumentation:** anonymous CV started/completed, first insight displayed, first valid vacancy preview, signup after insight, restored profile, trial activation, application prepared, paid conversion; measure latency, per-user inference/ATS costs and failure rate. Do not log raw CV or secrets.
+
+**Ordering adjustment:** deliver the anonymous first-value slice alongside I1/I2, before advertising public access; I7 remains the ten-opportunity and ten-tailored-application expansion, not the first time an anonymous user receives value.
 
 ## Two release thresholds
 
