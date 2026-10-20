@@ -255,6 +255,44 @@ def init_routes(product):
         return {"uploaded":True,"file_name":row["source_name"],"text":row["text_content"],
                 "evidence":json.loads(row["evidence_json"]),"confirmed":confirmed,"updated_at":row["updated_at"]}
 
+    @router.post("/anonymous/cv-analysis")
+    async def anonymous_cv_analysis(request:Request,file:UploadFile=File(...)):
+        """First useful CV feedback without account creation or persistent storage.
+
+        Only self-reported text is analyzed; no candidate profile or session is created.
+        """
+        check_origin(request)
+        name=Path(file.filename or "").name[:120]
+        ext=Path(name).suffix.lower()
+        if ext not in {".pdf",".docx",".txt"}:
+            raise HTTPException(415,"Supported files: PDF, DOCX, TXT")
+        raw=await file.read(8*1024*1024+1)
+        await file.close()
+        if len(raw)>8*1024*1024:raise HTTPException(413,"Maximum file size is 8 MB")
+        if not raw:raise HTTPException(422,"Empty file")
+        if ext==".pdf" and not raw.startswith(b"%PDF-"):raise HTTPException(422,"Invalid PDF file")
+        if ext==".docx" and not raw.startswith(b"PK"):raise HTTPException(422,"Invalid DOCX file")
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/("cv"+ext)
+            path.write_bytes(raw)
+            try:content=read_text(path).strip()
+            except Exception:raise HTTPException(422,"Could not read this CV. Try a text-based PDF, DOCX or TXT.")
+        if len(content)<50:raise HTTPException(422,"Too little selectable text. Scanned CVs need OCR or pasted text.")
+        if len(content)>100000:raise HTTPException(413,"CV text too long")
+        evidence=atomize_text(content,"anonymous-cv","cv")
+        # Deterministic, source-grounded suggestions, not AI-verified qualifications.
+        metrics=re.findall(r"(?<!\\w)(?:\\d+(?:[.,]\\d+)?\\s?%|[$€£]\\s?\\d[\\d,.]*|\\d[\\d,.]*\\s?(?:users|customers|clients|revenue|projects|teams))\\b?",content,re.I)
+        insights=[]
+        if not metrics:insights.append({"kind":"missing_metric","message":"Add measurable outcomes to your strongest achievements where you have supporting evidence."})
+        else:insights.append({"kind":"metric_candidates","message":"Review quantified claims and confirm their context and accuracy before using them in applications.","examples":metrics[:5]})
+        if len(content.split())<180:insights.append({"kind":"limited_detail","message":"Your CV may lack enough detail for evidence-based role matching. Add responsibilities and concrete results."})
+        insights.append({"kind":"verification","message":"Imported CV statements are self-reported, not independently verified. Review them before tailoring an application."})
+        response=ResponseJSON({"file_name":name,"evidence":evidence,"insights":insights,
+                               "verification_level":"self-reported","saved":False,
+                               "next_step":"Sign in only when you want to save and resume your analysis."})
+        response.headers["Cache-Control"]="no-store"
+        return response
+
     @router.post("/cv")
     async def upload_cv(request:Request,file:UploadFile=File(...)):
         check_origin(request);uid=require_user(request)
