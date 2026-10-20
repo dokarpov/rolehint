@@ -47,8 +47,8 @@ try{
   if(!(await link.isVisible()))throw Error('real vacancy absent');
   if((await link.getAttribute('href'))!=='https://jobs.example.org/123')throw Error('incorrect employer URL');
   await page.getByRole('button',{name:'Review fit & prepare'}).click();
-  if(!(await page.getByText('Required: product strategy').isVisible()))throw Error('requirement evidence detail absent');
-  if(!(await page.getByText(/B2B contractor status: unconfirmed/).isVisible()))throw Error('contractor uncertainty hidden');
+  await page.getByText('Required: product strategy').waitFor({state:'visible',timeout:6000});
+  await page.getByText(/B2B contractor status: unconfirmed/).waitFor({state:'visible',timeout:6000});
   if(!(await page.locator('#contractor').isChecked()))throw Error('saved B2B preference missing');
   if(!(await page.getByRole('button',{name:'Open employer application form'}).isVisible()))throw Error('review/handoff missing');
   console.log('PASS authenticated workspace fixtures and vacancy source URL');
