@@ -287,7 +287,9 @@ def init_routes(product):
         else:insights.append({"kind":"metric_candidates","message":"Review quantified claims and confirm their context and accuracy before using them in applications.","examples":metrics[:5]})
         if len(content.split())<180:insights.append({"kind":"limited_detail","message":"Your CV may lack enough detail for evidence-based role matching. Add responsibilities and concrete results."})
         insights.append({"kind":"verification","message":"Imported CV statements are self-reported, not independently verified. Review them before tailoring an application."})
-        response=ResponseJSON({"file_name":name,"evidence":evidence,"insights":insights,
+        role_titles=["Product Manager","Product Designer","Software Engineer","Data Analyst","Project Manager","UX Researcher","Marketing Manager","Customer Success Manager"]
+        suggested_roles=[title for title in role_titles if title.lower() in content[:5000].lower()][:4]
+        response=ResponseJSON({"file_name":name,"evidence":evidence,"insights":insights,"suggested_roles":suggested_roles,
                                "verification_level":"self-reported","saved":False,
                                "next_step":"Sign in only when you want to save and resume your analysis."})
         response.headers["Cache-Control"]="no-store"
