@@ -281,7 +281,7 @@ def init_routes(product):
         if len(content)>100000:raise HTTPException(413,"CV text too long")
         evidence=atomize_text(content,"anonymous-cv","cv")
         # Deterministic, source-grounded suggestions, not AI-verified qualifications.
-        metrics=re.findall(r"(?<!\\w)(?:\\d+(?:[.,]\\d+)?\\s?%|[$€£]\\s?\\d[\\d,.]*|\\d[\\d,.]*\\s?(?:users|customers|clients|revenue|projects|teams))",content,re.I)
+        metrics=re.findall(r"(?<!\w)(?:\d+(?:[.,]\d+)?\s?%|[$€£]\s?\d[\d,.]*|\d[\d,.]*\s?(?:users|customers|clients|revenue|projects|teams))",content,re.I)
         insights=[]
         if not metrics:insights.append({"kind":"missing_metric","message":"Add measurable outcomes to your strongest achievements where you have supporting evidence."})
         else:insights.append({"kind":"metric_candidates","message":"Review quantified claims and confirm their context and accuracy before using them in applications.","examples":metrics[:5]})
