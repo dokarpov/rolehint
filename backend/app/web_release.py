@@ -27,6 +27,8 @@ def is_qualified(job,prefs,contractor_only):
     parsed=urlsplit(url)
     if parsed.scheme!="https" or not parsed.netloc or not job.get("company") or not job.get("title"):
         return False,"Missing valid employer URL or identity"
+    if str(job.get("source") or "") not in {"ashby","lever","greenhouse","workable","smartrecruiters"}:
+        return False,"Not a directly supported employer ATS source"
     if not (job.get("source_job_id") or job.get("canonical_key")):
         return False,"Missing stable ATS identity"
     if evaluate_constraints(extract_constraints(job),prefs).get("hard"):
