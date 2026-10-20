@@ -37,7 +37,15 @@ def link_job(j,label=None):
     return f'<a href="{html.escape(url,quote=True)}">{label}</a>' if url else label
 
 async def start(msg):
-    cid=msg["chat"]["id"];u=msg.get("from") or {};data=await summary(u["id"])
+    cid=msg["chat"]["id"];u=msg.get("from") or {}
+    command=(msg.get("text") or "").strip().split(maxsplit=1)
+    if len(command)==2 and command[1].startswith("web_"):
+        try:
+            result=await backend("POST","/web-api/telegram/bot-issue",{"state":command[1][4:],"telegram_user":{"id":u["id"],"first_name":u.get("first_name",""),"username":u.get("username","")}})
+            return await send(cid,"<b>RoleHint web sign-in</b>\\n\\nEnter this one-time code in the web page: <code>"+html.escape(result["code"])+"</code>\\n\\nExpires in 10 minutes. Never share this code.")
+        except Exception:
+            return await send(cid,"This web sign-in link has expired or is invalid. Start a new sign-in from the RoleHint website.")
+    data=await summary(u["id"])
     ap=data.get("autopilot") or {};profiles=ap.get("search_profiles") or []
     if profiles:
         status="I’m already searching automatically: "+", ".join(x["query"] for x in profiles[:3])+"."
