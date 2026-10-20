@@ -55,8 +55,11 @@ def evaluate_constraints(constraints,prefs):
     floor=float(prefs.get("salary_floor_annual") or 0)
     salary_max=constraints.get("salary_max");salary_min=constraints.get("salary_min")
     published_max=salary_max if salary_max is not None else salary_min
-    if floor and published_max is not None and float(published_max)<floor:
-        hard.append(f"Published compensation ({float(published_max):g}) is below the configured hard salary floor ({floor:g}).")
+    currency=str(constraints.get("currency") or "").upper()
+    if floor and published_max is not None and currency=="EUR" and float(published_max)<floor:
+        hard.append(f"Published EUR compensation ({float(published_max):g}) is below the configured EUR hard salary floor ({floor:g}).")
+    elif floor and published_max is not None and currency!="EUR":
+        unknown.append("Published compensation currency is not EUR or is unknown; verify before comparing with the EUR salary floor.")
     if salary_min is None and salary_max is None:notes.append("Compensation is undisclosed; this changes funnel priority, not eligibility by itself.")
     allowed=[_lower(x) for x in prefs.get("allowed_regions") or [] if str(x).strip()]
     home=_lower(prefs.get("home_region"))
