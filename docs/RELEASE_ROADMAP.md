@@ -1,5 +1,8 @@
 # RoleHint — iterative implementation roadmap
 
+> **Detailed audit update (2026-10-21):** [source-verified flow/defect audit](UX_SERVICE_AUDIT_V2_2026-10-21.md) · [200-case corner-case matrix](UX_EDGE_CASE_MATRIX_2026-10-21.md) · [sequenced implementation backlog](UX_IMPLEMENTATION_BACKLOG_2026-10-21.md). The shorter plan below is retained as an overview; acceptance depends on the linked detailed gates. No new webapp deployment was made.
+
+
 **Version:** 1.1 · **Updated:** 2026-10-21 · **Owner:** Product/engineering  
 **Target:** smallest *complete and reliable* browser release, while preserving the backend, ATS discovery, decision policies and application history already built.  
 **Present state:** **BLOCKED** (see [dated audit](RELEASE_BASELINE_2026-10-20.md)); automated CI success is not user E2E acceptance.
