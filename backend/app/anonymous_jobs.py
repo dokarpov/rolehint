@@ -37,6 +37,7 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
         raw=await asyncio.wait_for(svc.search(role),timeout=22)
     except Exception:raise HTTPException(503,"Live job sources are temporarily unavailable")
     terms=_tokens(cv_terms)
+    cv_available=bool(terms)
     role_terms=_tokens(role)
     feed_ok=False
     try:
@@ -82,8 +83,8 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
             "location":str(j.get("location") or "Not specified")[:130],
             "url":url,"source":j.get("source"),"posted_at":j.get("posted_at"),
             "fit":{"matched_terms":matched,"unconfirmed_terms":missing,
-                "label":"Partial evidence" if matched else "Not assessed",
-                "note":"Keyword signals only; eligibility, experience and vacancy status require verification."},
+                "label":"Some CV evidence" if matched else ("No CV evidence found" if cv_available else "Role-only match"),
+                "note":"Unverified text overlap, not a qualification assessment; eligibility, experience and vacancy status require verification."},
             "remote":j.get("remote"),"description_excerpt":desc[:350]})
     output.sort(key=lambda job:job["_rank"],reverse=True)
     output=output[:10]
