@@ -1,5 +1,5 @@
 /* RoleHint public PWA: avoid trapping users on obsolete releases. */
-const CACHE='rolehint-shell-20261013-v5';
+const CACHE='rolehint-shell-20261021-v6';
 const SHELL=['./','./index.html','./workspace.html','./pricing.html','./subscription.html','./install.html','./privacy.html','./favicon.svg','./manifest.webmanifest','./design-v2.css','./design-v2.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>Promise.allSettled(SHELL.map(url=>cache.add(url)))).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
