@@ -1,4 +1,7 @@
-# Recommended technical stack
+# Recommended technical stack — target, not deployed runtime
+
+> **Implementation reality (verified in source on 2026-10-21):** the running code uses multiple SQLite databases (including `product_state.db`, `career_fit.db` and `career_state.db`), SQLite FTS5/BM25 and optional local TF-IDF/LSI hybrid retrieval. PostgreSQL, pgvector, SQLAlchemy/Alembic and the Next.js/React target below are a **proposed stack, not a verified deployed implementation**. Do not claim operational maturity from this architecture proposal. See [SQL integrity plan](SQL_DATA_INTEGRITY_PLAN_2026-10-21.md) and [48-case database acceptance matrix](SQL_DATA_INTEGRITY_TEST_MATRIX_2026-10-21.md). Before migrating: prove current SQLite transaction correctness, concurrency handling, staging isolation, recoverability and safe schema upgrades.
+
 
 ## Product application
 
