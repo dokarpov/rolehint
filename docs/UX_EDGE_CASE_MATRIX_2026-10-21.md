@@ -1,6 +1,8 @@
 # RoleHint — exhaustive UX and failure-injection scenario matrix
 **Date:** 2026-10-21 · **Status:** acceptance inventory, **NOT** a claim of tests passed. **Cases:** 200.
 
+**SQL dependency added 2026-10-21:** [48-case database integrity, concurrency and recovery matrix](architecture/SQL_DATA_INTEGRITY_TEST_MATRIX_2026-10-21.md). This supplements (does not replace or retroactively pass) the 200 UX scenarios. The first-ten, paid unlimited, account restore and submission-state journeys are blocked until their SQL invariants pass on isolated durable staging. See [SQL architecture and migration decision plan](architecture/SQL_DATA_INTEGRITY_PLAN_2026-10-21.md).
+
 Read this with [UX_SERVICE_AUDIT_V2_2026-10-21.md](UX_SERVICE_AUDIT_V2_2026-10-21.md), [RELEASE_TEST_MATRIX.md](RELEASE_TEST_MATRIX.md), the product/matching/entitlement specs and the specific implementation SHA.
 
 **Legend:** P0 = privacy, authenticity, core promise, account isolation, unrecoverable flow, financial or significant trust failure; P1 = high-impact user frustration or state inconsistency; P2 = polish/optional future decision. **Required evidence** names the future test, not an observed PASS. Mark every case PASS / FAIL / BLOCKED / UNTESTED, versioned by env + SHA + device + fixture. For cases not implemented, record FAIL/SPECIFIED rather than inventing acceptance.
