@@ -7,6 +7,18 @@
 **Target:** smallest *complete and reliable* browser release, while preserving the backend, ATS discovery, decision policies and application history already built.  
 **Present state:** **BLOCKED** (see [dated audit](RELEASE_BASELINE_2026-10-20.md)); automated CI success is not user E2E acceptance.
 
+## Database integrity and SQL maturity gate (2026-10-21)
+
+The existing product is **SQLite-backed applied SQL**, not a demonstrated PostgreSQL/pgvector production installation. See [source-verified SQL data integrity plan](architecture/SQL_DATA_INTEGRITY_PLAN_2026-10-21.md) and [48 SQL release tests](architecture/SQL_DATA_INTEGRITY_TEST_MATRIX_2026-10-21.md). The PostgreSQL/pgvector/ORM stack in TECH_STACK.md is a **target** only.
+
+**Reordered mandatory dependencies (before real delivery quotas, paid pagination, automated search writes or public E2E):**
+1. **DB-0: Staging isolation and durable test data.** Railway's staging-named service currently has no reported attached volume and shares the Railway environment named `production` with the production service. Prove distinct data/config, then schema inventory, migration ledger, foreign key + FTS integrity, restart/backup/restore. Do not copy live CVs into staging.
+2. **DB-1: Atomic entitlement and job state.** Evaluate/rank without writes; canonicalize ATS jobs; define a short transaction for new qualifying delivered vacancy and user entitlement. Handle two-device race, source failures, idempotent retries, free ten lifetime and SKU-scoped paid unlimited, including interrupted response semantics. Don't count `len(user_jobs)`.
+3. **DB-2: Submission/history correctness.** Transactional idempotent application events, worker/browser collisions, valid handoff→reported submitted→outcome transitions, CV/evidence/pack version consistency, cross-user isolation and retryable queues.
+4. **DB-3: PostgreSQL feasibility decision only after DB-0–2.** Measure SQLite contention, size, latency, source/retrieval needs and operational requirements. If justified, migrate using versioned and tested schema/data transitions, safe cutover and restore/cutback, with real EXPLAIN ANALYZE benchmarks. Add pgvector only after measured search relevance benefits. **No database swap is required merely to complete the immediate UX iteration.**
+
+**Release rule:** even beautiful, functional-looking staging pages cannot pass public release while DB-0, DB-1 and the applicable DB-2 invariants remain untested. Automated SQL fixtures and Railway health alone are not real-user E2E acceptance. The existing live production SQLite volume must not be replaced or migrated without backup, reproducible rehearsal and explicit founder approval.
+
 ## Delivery method
 
 - One **vertical slice** per iteration: build → isolated tests → existing backend regression → desktop/iPhone browser journey → staging/prod smoke → explicit go/no-go. No standalone "UI-only done" claims.
