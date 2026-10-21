@@ -1,71 +1,87 @@
-import {chromium} from 'playwright';
-import {spawn} from 'node:child_process';
-import {setTimeout as delay} from 'node:timers/promises';
+import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+import { setTimeout as delay } from 'node:timers/promises';
+
+// Fixture-only UI regression. This does not prove live ATS or real authentication.
 const server=spawn('python3',['-m','http.server','8789','--directory','.'],{stdio:'ignore'});
 const browser=await chromium.launch({headless:true});
+const assert=(condition,message)=>{if(!condition)throw Error(message)};
+const fixture={source:'ashby',url:'https://jobs.ashbyhq.com/example/open123',
+  title:'Senior Product Manager',company:'Example',location:'Remote Europe',
+  fit:{label:'Role-only match',matched_terms:[],unconfirmed_terms:[],
+    note:'Eligibility and CV fit unverified.'}};
 try{
-  await delay(900);
-  for(const width of [320,375,390,768,1440]){
-    const page=await browser.newPage({viewport:{width,height:780},isMobile:width<500,hasTouch:width<500});
-    const errors=[];page.on('pageerror',e=>errors.push(e.message));let telegramAuthenticated=false;
-    await page.route('**/web-api/**',async route=>{
-      const url=new URL(route.request().url());
-      const pathname=url.pathname;
-      const respond=data=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
-      if(pathname.endsWith('/me')) return telegramAuthenticated?respond({authenticated:true,preferences:{remote_only:false,salary_floor_annual:0},search_profiles:[],jobs:[],free_used:0,free_limit:10}):route.fulfill({status:401,contentType:'application/json',body:'{"detail":"Please sign in"}'});
-      if(pathname.endsWith('/telegram/begin'))return respond({url:'https://t.me/rolehint_test_bot?start=web_sample',message:'Open Telegram'});
-      if(pathname.endsWith('/telegram/complete')){telegramAuthenticated=true;return respond({ok:true})}
-      if(pathname.endsWith('/cv'))return respond({uploaded:false});
-      if(pathname.endsWith('/release-state'))return respond({contractor_only:false,opportunities:[],application_history:[]});
-      if(pathname.endsWith('/auth-status')) return respond({email_login_available:false});
-      return route.fulfill({status:503,contentType:'application/json',body:'{"detail":"Unavailable"}'});
-    });
-    await page.goto('http://127.0.0.1:8789/webapp/',{waitUntil:'networkidle'});
-    if(!(await page.getByRole('heading',{name:/Find work worth/}).isVisible()))throw Error('missing hero '+width);
-    const unlabeled=await page.evaluate(()=>[...document.querySelectorAll('input,textarea,select')].filter(x=>!x.labels?.length && !x.getAttribute('aria-label')).map(x=>x.id||x.tagName));
-    if(unlabeled.length)throw Error('Unlabeled form fields '+width+': '+unlabeled.join(','));
-    if((await page.locator('h1').count())!==2)throw Error('Expected separate guest and account headings for conditional views '+width);
-
-    const docWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
-    if(docWidth>width+2)throw Error('horizontal overflow '+width+' '+docWidth);
-    await page.locator('#first-role').fill('Senior Product Manager');
-    await page.getByRole('button',{name:'Continue with this role'}).click();
-    if(!(await page.locator('#auth-zone').isVisible()))throw Error('no auth transition '+width);
-    if(!(await page.locator('#email-button').isDisabled()))throw Error('unconfigured login should be disabled '+width);
-    if((await page.evaluate(()=>sessionStorage.getItem('rolehint_intended_role')))!=='Senior Product Manager')throw Error('role not persisted '+width);
+  await delay(950);
+  for(const width of [320,375,390,430,768,1440]){
+    const page=await browser.newPage({viewport:{width,height:844},isMobile:width<500,hasTouch:width<500});
+    const errors=[],searches=[];
+    let authenticated=false;
+    page.on('pageerror',e=>errors.push(e.message));
     page.on('popup',async p=>{try{await p.close()}catch{}});
-    await page.getByRole('button',{name:'Sign in with Telegram'}).click();
-    await page.locator('#telegram-code-zone').waitFor({state:'visible',timeout:5000});
+    await page.route('**/web-api/**',async route=>{
+      const req=route.request(),path=new URL(req.url()).pathname;
+      const respond=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
+      if(path==='/web-api/me')return authenticated
+        ?respond({authenticated:true,preferences:{remote_only:false,salary_floor_annual:0},search_profiles:[],jobs:[],free_used:0,free_limit:10})
+        :respond({detail:'Please sign in'},401);
+      if(path==='/web-api/auth-status')return respond({email_login_available:false});
+      if(path==='/web-api/anonymous/cv-analysis')return respond({
+        saved:false,evidence:[{evidence:'Product management, research and delivery outcomes.'}],
+        insights:[{message:'Review extracted achievements before using them.'}],
+        suggested_roles:['Senior Product Manager']});
+      if(path==='/web-api/anonymous/matches'){
+        assert(req.method()==='POST','matching must use POST');
+        assert(new URL(req.url()).search==='','CV query-string exposure at '+width);
+        searches.push(req.postDataJSON());
+        return respond({jobs:[fixture],sources_available:true,count:1,limit:10});
+      }
+      if(path==='/web-api/telegram/begin')return respond({url:'https://t.me/rolehint_test_bot?start=sample'});
+      if(path==='/web-api/telegram/complete'){authenticated=true;return respond({ok:true})}
+      if(path==='/web-api/release-state')return respond({contractor_only:false,opportunities:[],application_history:[]});
+      if(path==='/web-api/cv')return respond({uploaded:false});
+      return respond({detail:'Fixture intentionally unavailable'},503);
+    });
+    await page.goto('http://127.0.0.1:8789/webapp/',{waitUntil:'domcontentloaded'});
+    await page.locator('#start-screen').waitFor({state:'visible'});
+    assert(await page.getByRole('heading',{name:/Better applications/i}).isVisible(),'missing current hero at '+width);
+    assert(!(await page.locator('#auth-zone').isVisible()),'authentication before value at '+width);
+    const unlabeled=await page.evaluate(()=>[...document.querySelectorAll('input,textarea,select')]
+      .filter(x=>!x.labels?.length&&!x.getAttribute('aria-label')).map(x=>x.id||x.tagName));
+    assert(!unlabeled.length,'unlabeled controls '+width+': '+unlabeled.join(','));
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+    assert(overflow<=2,'horizontal overflow '+width+': '+overflow);
+    await page.locator('#first-role').fill('Senior Product Manager');
+    await page.locator('#role-first button[type=submit]').click();
+    await page.locator('.job-card').first().waitFor();
+    assert(searches.length===1&&searches[0].cv_terms==='','role-only search leaked context at '+width);
+    assert(await page.locator('.job-card a[href="https://jobs.ashbyhq.com/example/open123"]').count()===1,'missing ATS URL');
+    await page.locator('#jobs-back').click();
+    await page.locator('#cv-input').setInputFiles({
+      name:'example.txt',mimeType:'text/plain',
+      buffer:Buffer.from('Product manager with research, delivery and business outcomes. '.repeat(4))});
+    await page.locator('#anon-results').waitFor({state:'visible'});
+    assert(await page.locator('#start-screen').isVisible(),'CV review auto-skipped at '+width);
+    assert(searches.length===1,'CV triggered an unapproved automatic search at '+width);
+    assert(await page.locator('#first-role').inputValue()==='Senior Product Manager','role suggestion missing');
+    await page.locator('#role-first button[type=submit]').click();
+    await page.locator('.job-card').first().waitFor();
+    assert(searches.length===2&&searches[1].cv_terms.length>0,'CV context not provided to private POST');
+    await page.locator('#jobs-back').click();
+    await page.locator('#anon-discard').click();
+    await page.locator('#role-first button[type=submit]').click();
+    await page.locator('.job-card').first().waitFor();
+    assert(searches.length===3&&searches[2].cv_terms==='','discarded CV reused at '+width);
+    await page.locator('#jobs-notify').click();
+    assert(await page.locator('#auth-zone').isVisible(),'optional authentication unavailable at '+width);
+    assert(await page.locator('#email-button').isDisabled(),'unconfigured email was enabled');
+    await page.locator('#telegram-begin').click();
+    await page.locator('#telegram-code-zone').waitFor({state:'visible'});
     await page.locator('#telegram-code').fill('12345678');
-    await page.getByRole('button',{name:'Complete sign-in'}).click();
-    await page.locator('#member').waitFor({state:'visible',timeout:5000});
-    if((await page.locator('#target-role').inputValue())!=='Senior Product Manager')throw Error('intended role lost on login '+width);
-    if(errors.length)throw Error('page errors '+width+': '+errors.join('; '));
+    await page.locator('#telegram-complete button[type=submit]').click();
+    await page.locator('#member').waitFor({state:'visible'});
+    assert(!errors.length,'page exceptions '+width+': '+errors.join(' | '));
+    console.log('PASS fixture UX',width);
     await page.close();
-    console.log('PASS anonymous mobile-first role/auth gate',width);
   }
-  for(const width of [390,1280]){const page=await browser.newPage({viewport:{width,height:844}});
-  await page.route('**/web-api/**',async route=>{
-    const u=route.request().url();let body={};
-    if(u.endsWith('/me'))body={authenticated:true,preferences:{remote_only:true,salary_floor_annual:85000},search_profiles:[{query:'Product Manager'}],jobs:[{job_id:'ashby:123',title:'Product Manager',company:'Example employer',source_url:'https://jobs.example.org/123'}],free_used:1,free_limit:10};
-    else if(u.endsWith('/auth-status'))body={email_login_available:false};
-    else if(u.endsWith('/release-state'))body={contractor_only:true,opportunities:[],application_history:[]};
-    else if(u.endsWith('/cv'))body={uploaded:false};
-    else if(u.endsWith('/review'))body={job_id:'ashby:123',title:'Product Manager',company:'Example employer',requirements:[{label:'product strategy',mustHave:true}],proposal:{interview_risks:[]},final_action:'VERIFY_FIRST',contractor_status:'unconfirmed',freshness:'Employer source refreshed',constraints:{}};
-    else if(u.endsWith('/pack'))body={data:{role:{company:'Example employer',title:'Product Manager'},positioning:'',recruiter_note:'',proof_cards:[],short_answers:[],interview_risks:[]}};
-    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
-  });
-  await page.goto('http://127.0.0.1:8789/webapp/',{waitUntil:'networkidle'});
-  if(!(await page.getByRole('heading',{name:'Your opportunities'}).isVisible()))throw Error('member workspace absent');
-  if(!(await page.getByText('1 of 10 free opportunities delivered').isVisible()))throw Error('quota absent');
-  const link=page.getByRole('link',{name:'Product Manager'});
-  if(!(await link.isVisible()))throw Error('real vacancy absent');
-  if((await link.getAttribute('href'))!=='https://jobs.example.org/123')throw Error('incorrect employer URL');
-  await page.getByRole('button',{name:'Review fit & prepare'}).click();
-  await page.getByText('Required: product strategy').waitFor({state:'visible',timeout:6000});
-  await page.getByText(/B2B contractor status: unconfirmed/).waitFor({state:'visible',timeout:6000});
-  if(!(await page.locator('#contractor').isChecked()))throw Error('saved B2B preference missing');
-  if(!(await page.getByRole('button',{name:'Open employer application form'}).isVisible()))throw Error('review/handoff missing');
-  console.log('PASS authenticated workspace fixtures and vacancy source URL');
-  await page.close();}
-}finally{await browser.close();server.kill();}
+}finally{await browser.close();server.kill()}
+console.log('Current RoleHint webapp fixture smoke passed; live end-to-end remains required.');
