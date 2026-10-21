@@ -234,9 +234,17 @@ def init_routes(product):
         return {"authenticated":True,"preferences":prefs,"search_profiles":profiles,
                 "jobs":jobs[:10],"free_limit":10,"free_used":min(10,len(jobs))}
 
+    def delete_cv_evidence_rows(uid):
+        # FTS5 stores indexed plaintext separately from the relational record.
+        conn.execute("""DELETE FROM user_evidence_fts WHERE user_id=? AND evidence_id IN (
+            SELECT evidence_id FROM user_evidence
+            WHERE user_id=? AND source_type='cv' AND source_ref='candidate-cv'
+        )""",(uid,uid))
+        conn.execute("DELETE FROM user_evidence WHERE user_id=? AND source_type='cv' AND source_ref='candidate-cv'",(uid,))
+
     def replace_cv_evidence(uid,evidence):
         # Imported text remains self-reported; never silently upgrade it to verified.
-        conn.execute("DELETE FROM user_evidence WHERE user_id=? AND source_type='cv' AND source_ref='candidate-cv'",(uid,))
+        delete_cv_evidence_rows(uid)
         for item in evidence[:40]:
             item["status"]="needs-review"
             item["direct"]=False
@@ -354,7 +362,7 @@ def init_routes(product):
     def delete_cv(request:Request):
         check_origin(request);uid=require_user(request)
         conn.execute("DELETE FROM web_candidate_profiles WHERE user_id=?",(uid,))
-        conn.execute("DELETE FROM user_evidence WHERE user_id=? AND source_type='cv' AND source_ref='candidate-cv'",(uid,))
+        delete_cv_evidence_rows(uid)
         conn.execute("DELETE FROM web_cv_confirmations WHERE user_id=?",(uid,))
         conn.commit()
         return {"deleted":True}
