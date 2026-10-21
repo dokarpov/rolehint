@@ -103,6 +103,10 @@ python scripts/smoke_live_release.py
 
 **Live ATS test is intentionally network-dependent.** It may fail when employers close listings, block search or source schema changes; investigate rather than adding fake vacancies to make CI green.
 
+## Mandatory SQL integrity additions (2026-10-21)
+
+The source audit confirms SQLite storage, composite keys/upserts and FTS5; it does not establish PostgreSQL/pgvector implementation, quota transaction atomicity, concurrent API+worker safety or backup/restore. The complete new failure-injection matrix is [48 SQL integrity tests](architecture/SQL_DATA_INTEGRITY_TEST_MATRIX_2026-10-21.md). All 48 cases currently start **UNTESTED** until executed; do not mark them green based on backend unit suites or Railway health. In particular, free-credit and application/history P0s are a dependency of real role/CV→delivery→application E2E. First stabilize the existing SQLite data topology, then optionally evaluate PostgreSQL against measured workload and a separate approved migration ADR.
+
 ## Known evidence (not complete E2E)
 
 - 2026-10-20: backend PR gate and its deployed smoke stage passed for the integrated web code (see repository Actions history). Browser responsive test passed with intercepted fixture API responses; neither substitutes for the production user test.
