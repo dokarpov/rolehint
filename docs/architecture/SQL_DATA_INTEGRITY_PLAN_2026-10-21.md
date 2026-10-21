@@ -4,6 +4,16 @@
 
 **Non-negotiable:** keep the operating FastAPI/Telegram/ATS/AutoMatch/webapp and founder-approved visual design. **Do not rewrite the product or switch databases before correctness is demonstrated on the existing store.** No production database migration, live billing or staging promotion is approved here.
 
+## Execution progress — implementation branch, 2026-10-21
+
+**D0 partially implemented:** `backend/app/services/product_state/sqlite_integrity.py` now inspects integrity/FK/FTS count and performs non-overwriting SQLite online backups, explicitly reporting that backups of three independent databases are not one atomic cross-file snapshot. `backend/tests/test_sqlite_integrity.py` contains 3 synthetic SQLite regressions (run locally, PASS). `web_identity.py` now removes CV FTS entries when replacing or deleting indexed CV source rows, with an authenticated CV lifecycle regression. These changes have not run against production data; historical orphaned FTS data, encryption/retention, full-content FTS reconciliation, actual backup/restore and staging volume isolation remain unverified.
+
+**D1 data-layer prototype implemented but NOT integrated:** `backend/app/services/product_state/delivery_ledger.py` introduces short `BEGIN IMMEDIATE` reservation/ACK transactions with distinct canonical job IDs, free-ten count, TTL expiry and explicit server-authoritative paid SKUs. `backend/tests/test_delivery_ledger.py` contains 4 synthetic concurrency/idempotency tests (locally PASS with a matching standalone harness). **This module is not yet connected to `web_release.py`, the worker, ATS qualification or browser ACK, so current user-facing quota semantics remain unchanged and must not be presented as fixed.** Its schema is not automatically applied to production.
+
+**UX-first security slice:** `backend/app/anonymous_jobs.py` and `webapp/index.html` now use private POST for anonymous matching, reject CV query strings, clear discarded context and avoid automatic CV→jobs navigation. Backend and browser regressions were updated; live Railway staging and real-user testing remain BLOCKED. The feature branch is ahead of the last staging deployment SHA; existing staging has no reported durable volume or ATS/Telegram integration vars.
+
+**Validation caveat:** Local isolated tests do not constitute GitHub CI PASS or live Railway E2E. CI jobs are configured for these tests, but run conclusions are not independently verified in this execution.
+
 ## 1. What the repository actually proves
 
 | Capability | Code evidence | Assessment |
