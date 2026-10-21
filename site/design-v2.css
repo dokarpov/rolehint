@@ -90,3 +90,31 @@ button:focus-visible,a:focus-visible{outline-color:#171717}
 .screen-flag.good{color:#166534;background:#edf8f0}
 .screen-flag.muted{color:#666;background:#eee}
 @media(prefers-reduced-motion:reduce){.hero:before{animation:none}}
+
+/* LOCKED LANDING BRAND: monochrome, bold text-only wordmark, no purple or green. */
+:root{--ink:#111;--muted:#666;--line:#e5e5e5;--bg:#fff;--purple:#111;--lavender:#eee}
+html,body,header.site-header{background:#fff;color:#111}
+.brand,.screen-mark{font:800 27px/1 var(--display);letter-spacing:-.075em;color:#111;text-decoration:none}
+.brand img{display:none}
+.btn,.nav-links .btn{background:#111!important;color:#fff!important;border:1px solid #111!important}
+.btn:hover,.nav-links .btn:hover{background:#333!important;color:#fff!important}
+.eyebrow,.brand span,.nav-links a:hover{color:#111}
+.hero h1 em{background:linear-gradient(110deg,#111,#888,#222);background-clip:text;-webkit-background-clip:text;color:transparent}
+.hero:before{background:radial-gradient(ellipse 40% 45% at 70% 30%,#eaeaea,transparent 95%),radial-gradient(ellipse 30% 50% at 30% 63%,#f6f6f6,transparent 97%)}
+.signal-visual{--mx:0px;--my:0px;position:relative;min-height:600px;overflow:hidden;isolation:isolate;background:radial-gradient(circle at 50% 50%,#f4f4f4,#fff 60%);border:1px solid #e6e6e6;border-radius:26px;margin-top:36px}
+.signal-aura{position:absolute;inset:15%;border-radius:50%;background:radial-gradient(circle,#ddd9,transparent 65%);filter:blur(40px);transform:translate(var(--mx),var(--my));animation:signal-breathe 7s ease-in-out infinite alternate}
+.signal-orbit{position:absolute;left:50%;top:50%;border:1px solid #d8d8d8;border-radius:50%;transform:translate(calc(-50% + var(--mx)),calc(-50% + var(--my)));pointer-events:none}
+.orbit-one{width:280px;height:280px}.orbit-two{width:510px;height:510px}.orbit-three{width:740px;height:740px;border-style:dashed;opacity:.65}
+.signal-core{position:absolute;left:50%;top:50%;width:204px;height:204px;transform:translate(calc(-50% + var(--mx)*.35),calc(-50% + var(--my)*.35));border-radius:50%;background:#111;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 25px 65px #0002;z-index:3}
+.signal-core-name{font:800 34px/1 var(--display);letter-spacing:-.08em}.signal-core-sub{font:500 12px var(--body);color:#bbb;margin-top:12px}
+.signal-node{position:absolute;z-index:4;width:235px;padding:20px 22px;background:#fff;border:1px solid #ddd;border-radius:16px;box-shadow:0 18px 55px #0000000b;display:flex;flex-direction:column;gap:8px;animation:signal-float 7s ease-in-out infinite alternate}
+.signal-node small{font:800 10px var(--display);letter-spacing:.12em;color:#777}.signal-node strong{font:800 18px/1.2 var(--display);letter-spacing:-.035em;color:#111}.signal-node>span:last-child{font:13px/1.5 var(--body);color:#777}
+.node-one{top:13%;left:8%}.node-two{top:14%;right:7%;animation-delay:-2.4s}.node-three{bottom:12%;left:calc(50% - 118px);animation-delay:-4.8s}
+.signal-dot{width:8px;height:8px;background:#111;border-radius:50%;box-shadow:0 0 0 6px #eee;margin-bottom:8px}
+.signal-particle{position:absolute;width:9px;height:9px;border-radius:50%;background:#111;left:50%;top:50%;transform-origin:0 0;animation:signal-orbit 13s linear infinite;opacity:.8}.particle-two{animation-duration:18s;animation-delay:-6s;background:#777}.particle-three{animation-duration:23s;animation-delay:-12s;background:#bbb}
+.signal-caption{position:absolute;bottom:22px;right:26px;font:12px var(--body);color:#888}
+@keyframes signal-breathe{to{transform:translate(var(--mx),var(--my)) scale(1.18);opacity:.65}}
+@keyframes signal-float{to{transform:translateY(-14px)}}
+@keyframes signal-orbit{from{transform:rotate(0deg) translateX(245px)}to{transform:rotate(360deg) translateX(245px)}}
+@media(max-width:760px){.signal-visual{min-height:710px}.signal-core{width:148px;height:148px;top:46%}.signal-core-name{font-size:27px}.signal-node{width:190px;padding:15px}.signal-node strong{font-size:15px}.node-one{left:4%;top:5%}.node-two{right:4%;top:27%}.node-three{left:6%;bottom:8%}.orbit-three{width:540px;height:540px}.orbit-two{width:360px;height:360px}.orbit-one{width:210px;height:210px}.signal-caption{font-size:10px;bottom:10px;right:12px}}
+@media(prefers-reduced-motion:reduce){.signal-aura,.signal-node,.signal-particle{animation:none}}
