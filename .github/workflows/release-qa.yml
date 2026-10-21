@@ -7,7 +7,7 @@ on:
       - 'webapp/**'
       - '.github/workflows/release-qa.yml'
   push:
-    branches: [main]
+    branches: [main, feature/value-first-onboarding-20261021]
     paths:
       - 'site/**'
       - 'webapp/**'
@@ -36,7 +36,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run responsive regression checks against local site
         run: node site/qa-release.mjs
-      - name: Test web-app onboarding and authenticated workspace in five viewports
+      - name: Test current guest CV/role, privacy, results and auth UI in six viewports
         run: node site/qa-webapp.mjs
       - name: Enforce contrast for marketing and Telegram onboarding
         run: node tests/contrast-qa.mjs
