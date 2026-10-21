@@ -2,6 +2,8 @@
 import os,re,time,asyncio,httpx
 from urllib.parse import urlparse
 from fastapi import APIRouter,HTTPException,Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel,Field
 from .services.job_search import JobSearchService
 
 router=APIRouter(prefix="/web-api/anonymous")
@@ -16,8 +18,27 @@ def _valid(url):
         return p.scheme=="https" and bool(p.hostname) and not (p.username or p.password)
     except ValueError:return False
 
+class AnonymousMatchRequest(BaseModel):
+    role: str = Field(max_length=90)
+    cv_terms: str = Field(default="",max_length=2500)
+
+@router.post("/matches")
+async def match_jobs(request:Request,payload:AnonymousMatchRequest):
+    """Process anonymous matching context only in a POST body, never in the URL."""
+    expected=os.getenv("CFA_WEB_APP_URL","").rstrip("/")
+    if not expected or request.headers.get("origin")!=expected:
+        raise HTTPException(403,"Invalid request origin")
+    result=await _preview_jobs(request,payload.role,payload.cv_terms)
+    return JSONResponse(result,headers={"Cache-Control":"no-store"})
+
 @router.get("/jobs")
 async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
+    """Backward-compatible role-only GET; sensitive CV query values are rejected."""
+    if cv_terms:
+        raise HTTPException(422,"CV context in a URL is disabled. Use POST /web-api/anonymous/matches.")
+    return await _preview_jobs(request,role,"")
+
+async def _preview_jobs(request:Request,role:str,cv_terms:str):
     role=" ".join(role.split())
     if not 3<=len(role)<=90 or not re.search(r"[a-zA-Z]",role):
         raise HTTPException(422,"Enter a job title (3–90 characters)")
