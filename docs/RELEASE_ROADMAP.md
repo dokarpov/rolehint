@@ -34,6 +34,8 @@ The first interaction must create meaningful value **before** email, Telegram, a
 
 **Acceptance:** actual 320–430px Safari flow, role autosuggestions (keyboard and touch), CV→jobs and role→jobs, 10-or-fewer real URLs validated, per-job fit/gap expansion, load/zero/error/retry, back navigation, no signup before results, Telegram CTA only at end, security/privacy/cost tests and deployed SHA evidence. **Status: NOT IMPLEMENTED / BLOCKED until tested.**
 
+**Plan-specific results:** free 10 distinct qualifying deliveries total; active paid unlimited discovery via paginated results. See [Vacancy results and entitlements](VACANCY_RESULTS_AND_ENTITLEMENTS_V1.md). Subscription behavior is specified, not implemented.
+
 ## Two release thresholds
 
 **Private testable vertical slice (PT):** A new test candidate uses one approved sign-in option, imports a CV, saves and confirms its text, specifies role/remote/country/B2B, receives at least one fresh real vacancy if available, reviews fit, saves an honest application pack, opens the employer form after consent, confirms submission manually and sees the outcome after logging in again. Zero-source outcome must also work. No fictional record or automatic-submit claim.
