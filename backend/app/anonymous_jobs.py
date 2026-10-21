@@ -87,7 +87,7 @@ async def preview_jobs(request:Request,role:str="",cv_terms:str=""):
                 "note":"Unverified text overlap, not a qualification assessment; eligibility, experience and vacancy status require verification."},
             "remote":j.get("remote"),"description_excerpt":desc[:350]})
     output.sort(key=lambda job:job["_rank"],reverse=True)
-    output=output[:10]  # anonymous preview cap; subscriber pagination pending
+    output=output[:10]
     for job in output:job.pop("_rank",None)
     return {"sources_available":bool(feed_ok or raw),"source_counts":{"received":len(raw),"eligible":len(output)},"role":role,"jobs":output,"count":len(output),"limit":10,
         "disclaimer":"Live source listings; not independently confirmed open. No numeric fit score or eligibility guarantee."}
