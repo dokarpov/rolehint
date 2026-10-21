@@ -24,6 +24,8 @@ The first interaction must create meaningful value **before** email, Telegram, a
 
 **Ordering adjustment:** deliver the anonymous first-value slice alongside I1/I2, before advertising public access; I7 remains the ten-opportunity and ten-tailored-application expansion, not the first time an anonymous user receives value.
 
+**Detailed matching contract:** [CV-to-job matching specification v1](CV_JOB_MATCHING_SPEC_V1.md). Matching and live top-ten acceptance remain blocked until the contract's integration and browser gates pass.
+
 ## I3a — anonymous discovery, dual-entry progressive flow (2026-10-21)
 
 **Founder-approved screen sequence:** (1) CV upload **or visible role search with immediate suggestions**, (2) up to ten live vacancies with source URL, eligibility, evidence-backed fit and gaps per job, (3) Telegram opt-in **after** list end to receive new matches. One mobile screen per step; no generic CV-insight screen or login wall before jobs. Show fewer than ten truthfully when supply is limited; show zero-state and retry. Never invent vacancies or claim precise fit without sufficient evidence.
