@@ -149,6 +149,12 @@ Instrument privacy-safe events: first input displayed, CV chosen/uploaded/extrac
 
 **Research gaps:** current repository contains PRODUCT_EXPERIENCE and VALIDATION hypotheses, but inspected files do not establish source-backed 2024–2026 job-seeker social-listening insights, interview artifacts or segment behavior. Required qualitative study: first-value comprehension, trust in eligibility, CV privacy, uncertainty messaging, effort, comparison against job boards, and the actual conversion barrier. Run moderated task testing for role-only, CV-first, returning, career-switcher, Spain-based B2B applicant and free-exhausted. Do not convert an unverified hypothesis into a shipped promise.
 
+## 10A. Database integrity is a prerequisite, not a replacement UX track (2026-10-21)
+
+The technical source audit confirms an applied SQLite relational product, **not** an implemented PostgreSQL/pgvector production stack. The relevant live application uses `ProductStore`, `EvidenceStore`, search subscription and career SQLite connections; source-backed FTS5/BM25 exists. Some authentication consumes are protected by `BEGIN IMMEDIATE`, while free-10 entitlement and discovery persist across separate operations and are not demonstrated race-safe. `check_same_thread=False` and a persistent Railway production volume do not prove transaction isolation or recoverability. See [SQL integrity source audit and staged architecture](architecture/SQL_DATA_INTEGRITY_PLAN_2026-10-21.md) and [48 SQL fault-injection tests](architecture/SQL_DATA_INTEGRITY_TEST_MATRIX_2026-10-21.md).
+
+**Consequences for this UX audit:** DB-0 staging durability + migration/restore proof precede live cross-device acceptance; DB-1 atomic valid deliveries precedes free ten and paid results acceptance; DB-2 idempotent application/outcome/evidence handling precedes submission/tracking promises. PostgreSQL/pgvector migration remains optional until current SQLite correctness and measured workload establish a need. Do not re-create working SQL features to make a more impressive tech stack claim.
+
 ## 11. Release decision and ownership
 
 - **Now:** staging architecture/UX iteration only; production /webapp stays on old tested release even if visual style is unpleasant; no promotion until full end-to-end is signed off.
