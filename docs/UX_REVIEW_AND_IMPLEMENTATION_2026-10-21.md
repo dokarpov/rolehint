@@ -1,5 +1,8 @@
 # RoleHint — UX review and implementation gates (2026-10-21)
 
+> **Detailed audit update (2026-10-21):** [source-verified flow/defect audit](UX_SERVICE_AUDIT_V2_2026-10-21.md) · [200-case corner-case matrix](UX_EDGE_CASE_MATRIX_2026-10-21.md) · [sequenced implementation backlog](UX_IMPLEMENTATION_BACKLOG_2026-10-21.md). The shorter plan below is retained as an overview; acceptance depends on the linked detailed gates. No new webapp deployment was made.
+
+
 Status: working plan; NOT a release approval. Scope: staging webapp first. Production webapp remains unchanged until explicit founder signoff.
 
 ## Sources of truth and precedence
