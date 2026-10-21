@@ -2,6 +2,8 @@
 
 Status: implementation contract; **not evidence of live acceptance**. Owner: product/engineering. 2026-10-21.
 
+**Plan scope:** the up-to-ten limit below applies to the free preview/allowance only. Paid subscribers receive unlimited eligible vacancy discovery with paginated results. See [Vacancy results and entitlements specification](VACANCY_RESULTS_AND_ENTITLEMENTS_V1.md).
+
 ## Outcome and scope
 An anonymous visitor uploads a PDF/DOCX/TXT CV or chooses a target role. A separate results screen shows **up to 10 currently open, unique, genuinely relevant vacancies**, ordered by evidence-backed suitability, each with employer, role, original apply URL, remote geography, work arrangement, provenance, dated verification, fit evidence, gaps and unknowns. The role-only path is clearly labelled provisional. Never pad to 10, invent positions, or call token overlap a verified fit percentage.
 
