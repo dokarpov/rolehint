@@ -26,6 +26,10 @@ North-star activation: percentage of qualified first-time visitors who create an
 | Tracking + return | Monitor impact and improve | Submission confirmation or user confirmation and later outcomes | Durable job/application history, follow-ups, dedupe, iteration | Network failure, repeated submit, uncertain submission: no false success; resume safely |
 | Upgrade | Continue after value | Clear terms and separate payment consent | Free entitlement stays usable; card-backed trial/subscription via provider-hosted checkout when fully configured | Trial end, cancel, declined card, refunds, reactivation, deletion; no silent charging |
 
+## Vacancy discovery by plan
+
+**Free:** 10 lifetime qualifying distinct opportunities. **Active paid subscription:** unlimited qualifying vacancy discovery across searches and paginated results, with no product-imposed vacancy-count ceiling; actual availability depends on live sources. See [Vacancy results and entitlements specification](VACANCY_RESULTS_AND_ENTITLEMENTS_V1.md). Paid results must not be capped at ten. Billing is not yet live.
+
 ## Ten-opportunity entitlement
 - Server enforces exactly **10 qualifying, distinct, real opportunities delivered per account** without a card, **not** ten page views, source scans, raw candidates, generated drafts or arbitrary timeout.
 - Count only after a validated accessible source URL and job record have been durably delivered to the user's account. Suppress stale, duplicates, inaccessible or explicitly hard-ineligible items; replace without consuming quota. Preserve unused allowance if supply is low.
