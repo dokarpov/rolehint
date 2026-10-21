@@ -6,6 +6,14 @@
 
 **Inputs:** [full audit](UX_SERVICE_AUDIT_V2_2026-10-21.md), [200-case matrix](UX_EDGE_CASE_MATRIX_2026-10-21.md), PRODUCT_EXPERIENCE_V1, CV_JOB_MATCHING_SPEC_V1, VACANCY_RESULTS_AND_ENTITLEMENTS_V1, DECISION_POLICY, RELEASE_TEST_MATRIX and RELEASE_ROADMAP. Preserve the existing ATS/AutoMatch/pack/history services; do not rewrite working modules to ship an isolated UI prototype.
 
+## First implementation update (2026-10-21)
+
+- **In source on feature branch:** private POST vacancy matching, rejected CV query-string leakage, correct CV discard invalidation, no forced navigation after CV analysis; current-path browser fixtures replacing old UI assumptions.
+- **D0 implemented in source:** online SQLite per-file backup and integrity audit; FTS5 CV cleanup and regressions.
+- **D1 experimental foundation:** atomic ten-free reservation/ACK SQL ledger and concurrent synthetic tests, **not yet wired into production or staging user-facing discovery**.
+- **Operational blocker:** staging service is a separate Railway service but remains in the environment named `production`, has no reported persistent volume and lacks ATS-board/Telegram variables. Exact staged source SHA remains older than GitHub branch. No production webapp/source/data edits or deploys have been made.
+- **Remaining mandatory gates:** reliably isolated durable staging, current browser QA execution and results, real ATS source coverage, existing-accounts quota migration, writer/worker integration and real browser E2E. Do not mark D0/D1 complete on the basis of source files alone.
+
 ## A. Execution principles
 
 1. **One vertical slice** is an observable full browser action + backend state + error recovery + test evidence; a Figma frame, CSS PR or mock fixture alone does not close a slice.
