@@ -73,3 +73,20 @@ header.site-header{background:#f1f1ecef;border-bottom-color:#d3d6d0}
 .end-section .eyebrow{color:#bfd0c5}
 .end-section .btn{background:#f5f7f2;color:#1d2923;border-color:#f5f7f2}
 @media(prefers-reduced-motion:reduce){.hero:before{animation:none}}
+
+/* Approved neutral visual direction: monochrome, with no decorative purple/green. */
+:root{--ink:#171717;--muted:#656565;--line:#e2e2e2;--bg:#fff;--purple:#171717;--lavender:#ededed}
+body,header.site-header{background:#fff;color:#171717}
+header.site-header{border-bottom-color:#e7e7e7}
+.brand span,.eyebrow,.nav-links a:hover,.nav-links a[aria-current=page]{color:#171717}
+.btn{background:#171717;border-color:#171717;color:#fff}
+.btn:hover{background:#333;box-shadow:0 10px 25px #00000012}
+.hero:before{background:radial-gradient(ellipse 38% 45% at 70% 30%,#e9e9e9,transparent 95%),radial-gradient(ellipse 30% 50% at 30% 63%,#f5f5f5,transparent 97%)}
+.hero h1 em{background:linear-gradient(116deg,#161616,#777,#292929);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-copy p,.section-head p,.nav-links a{color:#555}
+button:focus-visible,a:focus-visible{outline-color:#171717}
+.story-screen,.story-stage,.story-copy,.screen-layout,.screen-body{--purple:#171717;--lavender:#ededed}
+.story-tabs button[aria-selected=true]{color:#111;border-color:#111}
+.screen-flag.good{color:#166534;background:#edf8f0}
+.screen-flag.muted{color:#666;background:#eee}
+@media(prefers-reduced-motion:reduce){.hero:before{animation:none}}
