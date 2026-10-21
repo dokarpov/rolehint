@@ -1,4 +1,7 @@
 # RoleHint — implementation backlog with dependency and acceptance contracts
+
+> **SQL integrity dependency (2026-10-21):** [verified current SQLite architecture and migration policy](architecture/SQL_DATA_INTEGRITY_PLAN_2026-10-21.md) · [48 database cases](architecture/SQL_DATA_INTEGRITY_TEST_MATRIX_2026-10-21.md). Before E06/E08 can qualify as live results, close DB-0/DB-1: durable isolated staging, schema migrations/restore proof, pure matching before persistence, and atomic ten-free lifetime delivered-valid-job ledger with paid SKU-specific bypass. Before E09/E10 public tracking claims, close DB-2: application/event idempotency, cross-process races, FTS and CV-to-pack deletion consistency. PostgreSQL migration is an optional evidenced DB-3, **not** a prerequisite to fix present UI or race bugs.
+
 **2026-10-21** · **Status:** approved directions translated into engineering work proposals, not deployed or tested.
 
 **Inputs:** [full audit](UX_SERVICE_AUDIT_V2_2026-10-21.md), [200-case matrix](UX_EDGE_CASE_MATRIX_2026-10-21.md), PRODUCT_EXPERIENCE_V1, CV_JOB_MATCHING_SPEC_V1, VACANCY_RESULTS_AND_ENTITLEMENTS_V1, DECISION_POLICY, RELEASE_TEST_MATRIX and RELEASE_ROADMAP. Preserve the existing ATS/AutoMatch/pack/history services; do not rewrite working modules to ship an isolated UI prototype.
@@ -14,7 +17,7 @@
 
 ## B. Dependency path
 
-**E00 release/test baseline** → **E01 visual system** + **E02 guest privacy/state** → **E03 CV/role progressive entry** → **E04 source truth** → **E05 eligibility & explainable fit** → **E06 result and decision UI** → **E07 identity/continuity** → **E08 free/paid entitlements** → **E09 truthful application export/handoff** → **E10 history and opt-in automation** → **E11 launch validation**.
+**E00 release/test baseline** + **DB-0 SQLite integrity / staging durability** → **E01 visual system** + **E02 guest privacy/state** → **E03 CV/role progressive entry** → **E04 source truth** → **E05 eligibility & explainable fit** → **DB-1 atomic delivery ledger** → **E06 result and decision UI** → **E07 identity/continuity** → **E08 free/paid entitlements** → **DB-2 application/history integrity** → **E09 truthful application export/handoff** → **E10 history and opt-in automation** → **E11 launch validation**.
 
 E04 can start behind E02; E08's ledger schema can be designed before E06, but its acceptance must use E06's actual delivered-results events. E09's backed application pack depends on E05 evidence provenance, not only the UI editor.
 
