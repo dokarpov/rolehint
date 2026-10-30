@@ -11,6 +11,7 @@ from .services.auto_match import AutoMatchService
 from .services.auto_match.service import extract_constraints, evaluate_constraints
 from .services.application_packs import markdown as pack_markdown
 from .services.application_tracking.board import build_application_board
+from .services.job_ingest.fetch import fetch_greenhouse, fetch_lever, fetch_ashby, canonical_url
 
 def _envlist(name):
     return [x.strip() for x in os.getenv(name,"").split(",") if x.strip()]
@@ -49,6 +50,9 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
       job_id TEXT NOT NULL, approved_at REAL NOT NULL,
       state TEXT NOT NULL DEFAULT 'approved_handoff', updated_at REAL NOT NULL,
       PRIMARY KEY(user_id,job_id));
+    CREATE TABLE IF NOT EXISTS web_manual_capture_attempts(
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      last_attempt REAL NOT NULL);
     CREATE TABLE IF NOT EXISTS web_discovery_attempts(
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       last_attempt REAL NOT NULL);
@@ -81,6 +85,78 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
                 j=jobs.get(e.get("job_id"))
                 if j:employer_rejections.add(j["company"].casefold())
         return submissions,applied,employer_rejections
+
+    @router.post("/capture-ats-url")
+    async def capture_ats_url(request:Request):
+        """Safely capture a direct employer ATS posting from a user-supplied URL.
+
+        Only exact official ATS hosts are accepted; no arbitrary HTML fetches,
+        redirects to untrusted domains, browser automation, or auto-submission.
+        """
+        check_origin(request)
+        uid=require_user(request)
+        data=await request.json()
+        url=str(data.get("url") or "").strip()
+        if not 20 <= len(url) <= 1600:
+            raise HTTPException(422,"Paste a direct employer ATS job URL")
+        try:
+            parsed=urlsplit(url)
+            if parsed.port is not None or parsed.username or parsed.password:
+                raise ValueError("Credentials and ports are not allowed")
+        except ValueError:
+            raise HTTPException(422,"Use an HTTPS employer ATS URL without credentials or ports")
+        providers={
+            "job-boards.greenhouse.io":fetch_greenhouse,
+            "boards.greenhouse.io":fetch_greenhouse,
+            "jobs.ashbyhq.com":fetch_ashby,
+            "jobs.lever.co":fetch_lever,
+            "jobs.eu.lever.co":fetch_lever,
+        }
+        provider=providers.get(parsed.hostname or "")
+        if parsed.scheme!="https" or not provider or not parsed.path.strip("/"):
+            raise HTTPException(422,"Supported sources: Greenhouse, Ashby and Lever employer job pages only")
+        # Existing saved URL is returned before rate limit; no new quota debit.
+        canonical=canonical_url(url)
+        existing_jobs=product.jobs(uid)
+        prior=next((j for j in existing_jobs
+                    if j.get("source_url") and canonical_url(j["source_url"])==canonical),None)
+        if prior:
+            return {"added":False,"duplicate":True,"job_id":prior["job_id"],
+                    "message":"Already saved. Open it in your applications."}
+        if len(existing_jobs)>=10 and not product.entitlement(uid):
+            raise HTTPException(403,"The ten free opportunities have already been delivered")
+        last=store.execute(
+            "SELECT last_attempt FROM web_manual_capture_attempts WHERE user_id=?",(uid,)).fetchone()
+        now=time.time()
+        if last and now-last["last_attempt"]<30:
+            raise HTTPException(429,"Please wait 30 seconds between new employer URL imports")
+        store.execute(
+            "INSERT INTO web_manual_capture_attempts VALUES(?,?) "
+            "ON CONFLICT(user_id) DO UPDATE SET last_attempt=excluded.last_attempt",(uid,now))
+        store.commit()
+        try:
+            job=await provider(url)
+        except Exception:
+            raise HTTPException(503,"Employer job provider temporarily unavailable")
+        if not job or job.get("fetch_status")!="ok":
+            raise HTTPException(422,"Employer posting could not be verified. Nothing was saved.")
+        eligible,reason=is_qualified(job,product.preferences(uid),contractor_only(uid))
+        if not eligible:
+            raise HTTPException(422,reason or "This opening does not match your saved eligibility rules")
+        job_id=f"{job['source']}:{job['source_job_id']}"
+        existing=product.job(uid,job_id)
+        if existing:
+            return {"added":False,"duplicate":True,"job_id":job_id,
+                    "message":"Already saved. Open it in your applications."}
+        # Reuse the existing requirement -> evidence -> constraints pipeline.
+        # CV facts stay self-reported; they are never silently marked verified.
+        result=match.analyze_job(uid,job)
+        if not result.get("ok"):
+            raise HTTPException(422,"The posting could not be analyzed reliably; nothing was saved")
+        stored=result["job"]
+        return {"added":True,"duplicate":False,"job_id":stored["job_id"],
+                "company":stored["company"],"title":stored["title"],
+                "message":"Employer posting saved for human review. Nothing has been submitted."}
 
     @router.get("/application-board")
     def application_board(request:Request):
