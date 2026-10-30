@@ -105,3 +105,63 @@ def test_board_endpoint_requires_login_and_scopes_all_data(monkeypatch):
         assert record["stage"] == "interview"
         client.cookies.set("rh_session",tb)
         assert jid not in [x["job_id"] for x in client.get("/web-api/application-board").json()["items"]]
+
+
+def test_direct_ats_capture_is_verified_scoped_and_idempotent(monkeypatch):
+    """No arbitrary URL fetch; valid captures feed the existing matching pipeline."""
+    monkeypatch.setenv("CFA_WEB_APP_URL", BASE)
+    from app import web_release
+    called=[]
+    async def fake_provider(url):
+        called.append(url)
+        return {
+            "source":"ashby","source_job_id":"verified-qa-123",
+            "source_url":url,"company":"Verified QA",
+            "title":"Senior Product Manager","location":"Remote Europe",
+            "fetch_status":"ok","description":(
+                "Responsibilities: Lead user research, design experiments and manage the product roadmap. "
+                "Requirements: Five years of B2C product experience, cross-functional leadership, "
+                "discovery, analytics, customer onboarding and measurable product outcomes. "
+                "You will coordinate engineers, designers and data analysts to improve activation. "*4
+            ),
+        }
+    monkeypatch.setattr(web_release,"fetch_ashby",fake_provider)
+    user,token=_user_and_token()
+    second,two=_user_and_token()
+    link="https://jobs.ashbyhq.com/verified-qa/verified-qa-123"
+    with TestClient(app,base_url=BASE) as client:
+        denied=client.post("/web-api/capture-ats-url",headers={"Origin":BASE},json={"url":link})
+        assert denied.status_code == 401
+        client.cookies.set("rh_session",token)
+        unsafe=[
+            "http://jobs.ashbyhq.com/verified-qa/1",
+            "https://127.0.0.1/internal",
+            "https://jobs.ashbyhq.com.evil.example/jobs/1",
+            "https://admin@jobs.ashbyhq.com/jobs/1",
+            "https://jobs.ashbyhq.com:8443/jobs/1",
+            "https://jobs.ashbyhq.com/",
+        ]
+        for bad in unsafe:
+            response=client.post("/web-api/capture-ats-url",
+                headers={"Origin":BASE},json={"url":bad})
+            assert response.status_code == 422,(bad,response.text)
+        assert not called
+        one=client.post("/web-api/capture-ats-url",headers={"Origin":BASE},json={"url":link})
+        assert one.status_code == 200,one.text
+        data=one.json()
+        assert data["added"] is True and data["duplicate"] is False
+        assert len(called) == 1
+        board=client.get("/web-api/application-board").json()
+        assert any(j["job_id"]==data["job_id"] and j["stage"]=="review" for j in board["items"])
+        same=client.post("/web-api/capture-ats-url",headers={"Origin":BASE},json={"url":link+"?utm_source=reddit"})
+        assert same.status_code == 200,same.text
+        assert same.json()["duplicate"] is True
+        assert len(called)==1
+        client.cookies.set("rh_session",two)
+        other=client.get("/web-api/application-board").json()
+        assert data["job_id"] not in [x["job_id"] for x in other["items"]]
+        # No cross-account "already saved" response.
+        new=client.post("/web-api/capture-ats-url",headers={"Origin":BASE},json={"url":link})
+        assert new.status_code == 200,new.text
+        assert new.json()["added"] is True
+        assert len(called)==2
