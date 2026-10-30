@@ -85,10 +85,10 @@ function renderApplicationBoard(){
     if(item.submitted_at){
       const date=new Date(item.submitted_at);
       if(!Number.isNaN(date.getTime()))tags.append(boardText('span','board-tag-secondary','Applied '+new Intl.DateTimeFormat('en',{dateStyle:'medium'}).format(date)));
-    }else if(item.pack_version){
-      tags.append(boardText('span','board-tag-secondary','Draft v'+item.pack_version+' · not submitted'));
     }else if(item.stage==='handoff'){
       tags.append(boardText('span','board-tag-secondary','Employer form opened; submission unconfirmed'));
+    }else if(item.pack_version){
+      tags.append(boardText('span','board-tag-secondary','Draft v'+item.pack_version+' · not submitted'));
     }
     if(item.evidence_gaps)tags.append(boardText('span','board-tag-secondary',item.evidence_gaps+' evidence gap'+(item.evidence_gaps===1?'':'s')));
     detail.append(tags);
