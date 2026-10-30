@@ -11,6 +11,12 @@ SCOPES=[
  "https://www.googleapis.com/auth/drive.readonly"
 ]
 
+WORKSPACE_SCOPES=[
+    "openid","email",
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/calendar.events"
+]
+
 class GoogleOAuth:
     def __init__(self,client_id=None,client_secret=None,callback_url=None):
         self.client_id=client_id or os.getenv("GOOGLE_CLIENT_ID")
@@ -18,12 +24,12 @@ class GoogleOAuth:
         self.callback_url=callback_url or os.getenv("GOOGLE_OAUTH_CALLBACK_URL")
     def configured(self):
         return bool(self.client_id and self.client_secret and self.callback_url)
-    def authorize_url(self,state):
+    def authorize_url(self,state,scopes=None):
         if not self.configured(): raise RuntimeError("Google OAuth is not configured")
         return AUTH+"?"+urlencode({
           "client_id":self.client_id,"redirect_uri":self.callback_url,
-          "response_type":"code","scope":" ".join(SCOPES),
-          "access_type":"offline","include_granted_scopes":"true","prompt":"consent",
+          "response_type":"code","scope":" ".join(scopes or SCOPES),
+          "access_type":"offline","include_granted_scopes":"false","prompt":"consent",
           "state":state
         })
     async def exchange(self,code):
