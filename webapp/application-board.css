@@ -27,3 +27,11 @@
 .board-note{font-size:12px;line-height:1.5;color:var(--muted)}
 @media(max-width:760px){.board-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.board-controls{grid-template-columns:1fr 1fr}.board-controls .board-search-field{grid-column:1 / -1;grid-row:1}.board-controls .btn{width:100%}.board-entry{grid-template-columns:minmax(0,1fr)}.board-entry .btn{width:100%;justify-content:center}}
 @media(max-width:420px){.board-controls{grid-template-columns:1fr}.board-controls .board-search-field{grid-column:auto;grid-row:auto}.board-metric{padding:13px}}
+
+/* Direct-ATS capture is part of the same authenticated, evidence-first workflow. */
+.capture-ats{border:1px solid var(--hair);padding:19px 20px 13px;border-radius:9px;margin:20px 0 18px;background:#fcfdfb}
+.capture-ats-fields{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:10px}
+.capture-ats input[type=url]{width:100%;min-width:0;min-height:48px;border:1px solid #bac9bc;border-radius:6px;padding:0 13px;background:#fff;font:inherit;color:var(--ink)}
+.capture-ats .btn{white-space:nowrap}
+.capture-ats .fine{margin-top:9px}
+@media(max-width:720px){.capture-ats{padding:16px}.capture-ats-fields{grid-template-columns:1fr}.capture-ats .btn{width:100%}}
