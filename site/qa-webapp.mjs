@@ -60,6 +60,16 @@ try{
         {job_id:'ats:interview',company:'Interview Studio',title:'Senior PM',location:'Remote',source_url:'https://jobs.example.org/interview',stage:'interview',stage_label:'Recruiter / interview',submitted_at:'2026-10-20T12:00:00+00:00'}
       ]};
     else if(u.endsWith('/cv'))body={uploaded:false};
+    else if(u.endsWith('/editorial-profile'))body={exists:true,profile:{
+      name:'Test Candidate',headline:'Senior Product Manager',city:'Barcelona, Spain',
+      email:'candidate@example.com',linkedin:'https://www.linkedin.com/in/test',
+      skills:['Product strategy','Experimentation'],
+      experiences:[{title:'Product Manager',company:'Sample Learning',period:'2023–2026',
+        bullets:['Led customer discovery and improved workflows.']}],
+      extras:[{heading:'Strength',value:'Product experiments'}],approved:false}};
+    else if(u.endsWith('/google/status'))body={
+      connected:false,gmail_readonly:false,calendar_events:false,can_send_email:false};
+    else if(u.endsWith('/documents/draft'))body={interest:'',body:'',approved:false,version:0};
     else if(u.endsWith('/review'))body={job_id:'ashby:123',title:'Product Manager',company:'Example employer',requirements:[{label:'product strategy',mustHave:true}],proposal:{interview_risks:[]},final_action:'VERIFY_FIRST',contractor_status:'unconfirmed',freshness:'Employer source refreshed',constraints:{}};
     else if(u.endsWith('/pack'))body={data:{role:{company:'Example employer',title:'Product Manager'},positioning:'',recruiter_note:'',proof_cards:[],short_answers:[],interview_risks:[]}};
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
@@ -84,9 +94,20 @@ try{
   await page.locator('#board-search').fill('');
   if(!(await page.locator('#capture-ats-url').isVisible()))throw Error('direct employer ATS import missing '+width);
   if(!(await page.locator('#capture-ats-form button').isVisible()))throw Error('capture action missing '+width);
+  await page.locator('#editorial-name').waitFor({state:'visible',timeout:5000});
+  if((await page.locator('#editorial-name').inputValue())!=='Test Candidate')throw Error('template profile did not load '+width);
+  if((await page.locator('[data-editorial-experience]').count())!==1)throw Error('editable experience not loaded '+width);
+  if(!(await page.locator('#editorial-html').isVisible()))throw Error('source HTML template import unavailable '+width);
+  if(!(await page.locator('#google-connect').isVisible()))throw Error('Google consent missing '+width);
+  if(!(await page.locator('#google-inbox-load').isDisabled()))throw Error('Gmail inbox readable without consent '+width);
+  if(!(await page.locator('#google-calendar-create').isDisabled()))throw Error('Google Calendar writable without consent '+width);
+  if((await page.evaluate(()=>document.documentElement.scrollWidth))>width+2)throw Error('new template or Google panel overflows '+width);
   await page.getByRole('button',{name:'Review fit & prepare'}).click();
   await page.getByText('Required: product strategy').waitFor({state:'visible',timeout:6000});
   await page.getByText(/B2B contractor status: unconfirmed/).waitFor({state:'visible',timeout:6000});
+  if(!(await page.locator('#editorial-document-zone').isVisible()))throw Error('role-specific CV and letter panel missing '+width);
+  if(!(await page.locator('#doc-export-approved').isVisible()))throw Error('explicit document export approval missing '+width);
+  if(!(await page.locator('#job-recheck').isVisible()))throw Error('employer freshness control missing '+width);
   if(!(await page.locator('#contractor').isChecked()))throw Error('saved B2B preference missing');
   if(!(await page.getByRole('button',{name:'Open employer application form'}).isVisible()))throw Error('review/handoff missing');
   console.log('PASS authenticated workspace fixtures and vacancy source URL');
