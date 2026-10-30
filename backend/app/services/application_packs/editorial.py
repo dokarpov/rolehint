@@ -138,14 +138,18 @@ def from_user_cv_html(raw_html):
                   if a.get("href") and "linkedin.com" in a.get("href")), "")
     city=get(".contact div") or ""
     jobs=[]
-    for row in page.select("article.job")[:MAX_EXPERIENCES]:
+    for row in soup.select(".page article.job")[:MAX_EXPERIENCES]:
         role=row.select_one(".role")
         meta=row.select_one(".meta")
         if not role or not meta:continue
         bullets=[x.get_text(" ",strip=True) for x in row.select(".desc-list li")][:MAX_BULLETS]
+        date_el=meta.select_one(".date")
+        period=date_el.get_text(" ",strip=True) if date_el else ""
+        company=meta.get_text(" ",strip=True)
+        if period:company=company.rsplit(period,1)[0].strip(" ·•–—-")
         jobs.append({"title":role.get_text(" ",strip=True),
-                     "company":meta.get_text(" ",strip=True).split(" • ")[0],
-                     "period":meta.select_one(".date").get_text(" ",strip=True) if meta.select_one(".date") else "",
+                     "company":company,
+                     "period":period,
                      "bullets":bullets})
     aside=page.select_one(".columns aside")
     skills=[x.get_text(" ",strip=True) for x in (aside.select(".skill") if aside else [])]
