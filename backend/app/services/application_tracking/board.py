@@ -95,7 +95,7 @@ def build_application_board(jobs, submissions, handoffs, packs):
         })
     rows.sort(key=lambda x: (
         STAGE_ORDER[x["stage"]],
-        -(next((float(latest.get(x["job_id"], {}).get("submitted_at") or 0)), 0)),
+        -float(latest.get(x["job_id"], {}).get("submitted_at") or 0),
         x["company"].casefold(),
     ))
     counts = {stage: 0 for stage in STAGE_LABELS}
