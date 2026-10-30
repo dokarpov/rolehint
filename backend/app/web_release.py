@@ -17,6 +17,7 @@ from .services.application_packs.editorial import (
 from .services.application_packs.render import safe_filename
 from .services.application_tracking.board import build_application_board
 from .services.job_ingest.fetch import fetch_greenhouse, fetch_lever, fetch_ashby, canonical_url
+from .services.job_sources.freshness import assess as assess_freshness, can_recheck, same_posting
 
 def _envlist(name):
     return [x.strip() for x in os.getenv(name,"").split(",") if x.strip()]
@@ -38,6 +39,8 @@ def is_qualified(job,prefs,contractor_only):
         return False,"Not a directly supported employer ATS source"
     if not (job.get("source_job_id") or job.get("canonical_key")):
         return False,"Missing stable ATS identity"
+    if assess_freshness(job)["state"]=="closed":
+        return False,"Employer posting has passed its published closing date"
     if evaluate_constraints(extract_constraints(job),prefs).get("hard"):
         return False,"Hard eligibility blocker"
     if contractor_only and contract_signal(job)=="incompatible":
@@ -378,6 +381,36 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
         return {"added":count,"remaining":max(0,10-len(product.jobs(uid))),
                 "message":("New live jobs were found." if count else "No new eligible ATS vacancies found. Your unused allowance remains.")}
 
+    @router.post("/jobs/{job_id}/recheck")
+    async def recheck_job(request:Request,job_id:str):
+        check_origin(request);uid=require_user(request)
+        saved=product.job(uid,job_id)
+        if not saved:raise HTTPException(404,"Opportunity not found")
+        raw=saved.get("payload") or {}
+        if not can_recheck(raw):
+            return {"job_id":job_id,**assess_freshness(raw),
+                    "message":"Automatic recheck is only available for direct Greenhouse, Ashby and Lever postings."}
+        prev=raw.get("source_recheck") or {}
+        now=time.time()
+        checked=__import__("datetime").datetime.fromtimestamp(now,__import__("datetime").timezone.utc).isoformat()
+        checked_before=__import__("datetime").datetime.fromisoformat(prev.get("checked_at")) if prev.get("checked_at") else None
+        if checked_before and now-checked_before.timestamp()<120:
+            raise HTTPException(429,"Please wait two minutes between employer rechecks")
+        handlers={"greenhouse":fetch_greenhouse,"lever":fetch_lever,"ashby":fetch_ashby}
+        try:
+            updated=await handlers[raw["source"]](raw["source_url"])
+        except Exception:
+            updated=None
+        state=("verified_open" if updated and updated.get("fetch_status")=="ok"
+               and same_posting(raw,updated) else "unknown")
+        reason=("Direct employer ATS returned the same requisition." if state=="verified_open" else
+                "Employer API did not confirm this exact requisition. Check the original URL.")
+        product.update_job_payload(uid,job_id,{
+            "source_recheck":{"state":state,"checked_at":checked,"reason":reason}
+        })
+        return {"job_id":job_id,"state":state,"checked_at":checked,
+                "reason":reason,"message":reason}
+
     @router.get("/jobs/{job_id}/review")
     def review(request:Request,job_id:str):
         uid=require_user(request);job=product.job(uid,job_id)
@@ -397,7 +430,9 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
                 "contractor_status":contract_signal(raw),
                 "already_submitted":job_id in applied,
                 "employer_rejected_before":job["company"].casefold() in rejections,
-                "freshness":"Retrieved from employer ATS; confirm the vacancy is still open before submitting."}
+                "freshness":assess_freshness(raw)["reason"],
+                "freshness_state":assess_freshness(raw)["state"],
+                "freshness_checked_at":assess_freshness(raw)["checked_at"]}
 
     @router.get("/jobs/{job_id}/pack")
     def get_pack(request:Request,job_id:str):
@@ -429,6 +464,8 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
         check_origin(request);uid=require_user(request)
         job=product.job(uid,job_id)
         if not job:raise HTTPException(404,"Opportunity not found")
+        if assess_freshness(job.get("payload") or {})["state"]=="closed":
+            raise HTTPException(409,"The posting is closed by its published valid-through date")
         url=str(job.get("source_url") or "")
         parsed=urlsplit(url)
         if parsed.scheme!="https" or not parsed.netloc:raise HTTPException(422,"Employer application URL unavailable")
