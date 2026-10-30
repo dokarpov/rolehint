@@ -93,6 +93,7 @@ async function loadEditorialDraft(jobId){
     text('editorial-document-status','Draft version '+d.version+'. Preview or approve before exporting.');
   }catch(err){text('editorial-document-status',err.message)}
 }
+function installEditorialHandlers(){
 $('editorial-html-form').onsubmit=async e=>{
   e.preventDefault();
   const file=$('editorial-html').files?.[0];
@@ -185,3 +186,6 @@ $('doc-export').onclick=async()=>{
   }catch(err){text('editorial-document-status',err.message)}
   finally{button.disabled=false}
 };
+
+}
+document.addEventListener('DOMContentLoaded',installEditorialHandlers,{once:true});
