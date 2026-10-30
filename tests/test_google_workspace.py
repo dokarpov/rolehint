@@ -32,6 +32,7 @@ def test_google_scopes_are_narrow_and_explicit():
     assert "client_secret" not in url
 
 def test_web_google_routes_require_real_account_and_explicit_origin(monkeypatch):
+    monkeypatch.setenv("CFA_WEB_APP_URL",BASE)
     import app.main as main
     uid,token=session()
     other,other_token=session()
