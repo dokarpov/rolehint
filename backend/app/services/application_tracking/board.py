@@ -69,7 +69,7 @@ def build_application_board(jobs, submissions, handoffs, packs):
         elif handoff:
             response = None
             stage = "handoff"
-        elif pack:
+        elif pack and int(pack.get("version") or 1) > 1:
             response = None
             stage = "draft"
         elif decision in {"DO_NOT_APPLY", "ALREADY_APPLIED"}:
@@ -90,7 +90,7 @@ def build_application_board(jobs, submissions, handoffs, packs):
             "evidence_gaps": max(0, int(job.get("evidence_gaps") or 0)),
             "submitted_at": _date(submission.get("submitted_at")) if submission else None,
             "response_state": response,
-            "pack_version": int(pack.get("version") or 1) if pack else None,
+            "pack_version": int(pack.get("version") or 1) if pack and int(pack.get("version") or 1) > 1 else None,
             "handoff_at": _date(handoff.get("approved_at")) if handoff else None,
         })
     rows.sort(key=lambda x: (
