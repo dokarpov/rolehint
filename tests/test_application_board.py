@@ -73,6 +73,7 @@ def test_board_endpoint_requires_login_and_scopes_all_data(monkeypatch):
     job = product.upsert_user_job(a,j)
     jid = job["job_id"]
     product.application_pack(a,jid,create=True)
+    product.save_application_pack(a,jid,{"positioning":"Relevant and approved by the user.","recruiter_note":"Draft"})
     with TestClient(app,base_url=BASE) as client:
         assert client.get("/web-api/application-board").status_code == 401
         client.cookies.set("rh_session",tb)
@@ -85,7 +86,7 @@ def test_board_endpoint_requires_login_and_scopes_all_data(monkeypatch):
         assert own.status_code == 200,own.text
         record = next(x for x in own.json()["items"] if x["job_id"] == jid)
         assert record["stage"] == "draft"
-        assert record["pack_version"] == 1
+        assert record["pack_version"] == 2
         assert record["submitted_at"] is None
         assert "payload" not in record
         assert "data" not in record
