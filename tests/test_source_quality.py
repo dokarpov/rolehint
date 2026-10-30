@@ -1,7 +1,7 @@
 """Search-source trust, freshness and optional JSearch tests with no network spend."""
 from datetime import datetime,timedelta,timezone
 import httpx
-import pytest
+import asyncio
 
 from app.services.jobs import dedupe
 from app.services.job_sources.freshness import assess,same_posting,can_recheck
@@ -53,25 +53,27 @@ def test_same_employer_requisition_only_and_no_untrusted_recheck():
     assert not same_posting(before,{**before,"source_job_id":"different"})
     assert not can_recheck({**before,"source_url":"https://jobs.ashbyhq.com.evil.example/a1"})
 
-@pytest.mark.asyncio
-async def test_jsearch_requires_key_and_is_discovery_only(monkeypatch):
-    monkeypatch.delenv("JSEARCH_RAPIDAPI_KEY",raising=False)
-    assert await JSearchSource().search("Product Manager",["es"],True)==[]
-    monkeypatch.setenv("JSEARCH_RAPIDAPI_KEY","test-key")
-    def handler(request):
-        assert request.url.host=="jsearch.p.rapidapi.com"
-        assert request.url.params["country"]=="es"
-        assert request.url.params["work_from_home"]=="true"
-        return httpx.Response(200,json={"data":[
-            {"job_id":"external123","employer_name":"Sample GmbH",
-             "job_title":"Senior Product Manager",
-             "job_country":"ES","job_is_remote":True,
-             "job_apply_link":"https://www.linkedin.com/jobs/view/123",
-             "job_description":"Lead cross-functional product teams."*10}
-        ]})
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result=await JSearchSource(client).search("Product Manager",["es"],True)
-    assert len(result)==1
-    assert result[0]["source_verification"]=="aggregator_unverified"
-    assert result[0]["source"]=="jsearch"
-    assert is_qualified(result[0],{"remote_only":False},False)[0] is False
+def test_jsearch_requires_key_and_is_discovery_only(monkeypatch):
+    async def run():
+        monkeypatch.delenv("JSEARCH_RAPIDAPI_KEY",raising=False)
+        assert await JSearchSource().search("Product Manager",["es"],True)==[]
+        monkeypatch.setenv("JSEARCH_RAPIDAPI_KEY","test-key")
+        def handler(request):
+            assert request.url.host=="jsearch.p.rapidapi.com"
+            assert request.url.params["country"]=="es"
+            assert request.url.params["work_from_home"]=="true"
+            return httpx.Response(200,json={"data":[
+                {"job_id":"external123","employer_name":"Sample GmbH",
+                 "job_title":"Senior Product Manager",
+                 "job_country":"ES","job_is_remote":True,
+                 "job_apply_link":"https://www.linkedin.com/jobs/view/123",
+                 "job_description":"Lead cross-functional product teams."*10}
+            ]})
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result=await JSearchSource(client).search("Product Manager",["es"],True)
+        assert len(result)==1
+        assert result[0]["source_verification"]=="aggregator_unverified"
+        assert result[0]["source"]=="jsearch"
+        assert is_qualified(result[0],{"remote_only":False},False)[0] is False
+    
+    asyncio.run(run())
