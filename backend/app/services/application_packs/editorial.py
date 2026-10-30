@@ -226,40 +226,123 @@ def pdf_from_html(html):
         raise ValueError("Document exceeds one A4 page. Shorten text before exporting.")
     return raw
 
+def _round_portrait_png(data_uri):
+    """Keep the same circular crop from the original HTML design."""
+    if not data_uri:return None
+    from PIL import Image,ImageDraw,ImageOps
+    payload=base64.b64decode(DATA.fullmatch(data_uri).group(2),validate=True)
+    image=Image.open(BytesIO(payload)).convert("RGB")
+    image=ImageOps.fit(image,(480,480),method=Image.Resampling.LANCZOS,centering=(.5,.5))
+    mask=Image.new("L",(480,480),0)
+    draw=ImageDraw.Draw(mask)
+    draw.ellipse((0,0,479,479),fill=255)
+    rgba=image.convert("RGBA")
+    rgba.putalpha(mask)
+    out=BytesIO()
+    rgba.save(out,format="PNG")
+    out.seek(0)
+    return out
+
 def docx_from_html_data(profile,job,kind,proof,interest,body):
+    """Editable Word adaptation of the approved editorial layout.
+
+    Native tables make the hierarchy and left-longer-than-right composition
+    reasonably faithful in Word without bundling any proprietary fonts.
+    """
     from docx import Document
     from docx.shared import Cm,Pt,RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT,WD_CELL_VERTICAL_ALIGNMENT
+    from docx.enum.text import WD_BREAK
     profile=validate_profile(profile)
     doc=Document()
     sec=doc.sections[0]
-    sec.top_margin=Cm(1.2);sec.bottom_margin=Cm(1.1)
-    sec.left_margin=Cm(1.85);sec.right_margin=Cm(1.85)
-    sec.page_height=Cm(29.7);sec.page_width=Cm(21)
-    normal=doc.styles['Normal'];normal.font.name='Arial';normal.font.size=Pt(9)
+    sec.top_margin=Cm(1.2);sec.bottom_margin=Cm(1.0)
+    sec.left_margin=Cm(1.86);sec.right_margin=Cm(1.86)
+    sec.page_height=Cm(29.7);sec.page_width=Cm(21.0)
+    normal=doc.styles["Normal"]
+    normal.font.name="Arial";normal.font.size=Pt(8.6)
     normal.font.color.rgb=RGBColor(45,55,77)
+    normal.paragraph_format.space_after=Pt(3)
+    ink=RGBColor(29,33,48);muted=RGBColor(93,102,135);accent=RGBColor(109,115,146)
+    def add_run(paragraph,value,size=None,bold=False,color=None):
+        run=paragraph.add_run(str(value or ""))
+        run.font.name="Arial";run.font.bold=bold
+        if size:run.font.size=Pt(size)
+        if color:run.font.color.rgb=color
+        return run
+    def paragraph(parent,value="",size=8.5,bold=False,color=muted,after=3):
+        p=parent.add_paragraph()
+        p.paragraph_format.space_before=Pt(0)
+        p.paragraph_format.space_after=Pt(after)
+        if value:add_run(p,value,size,bold,color)
+        return p
     if kind=="cv":
-        p=doc.add_paragraph();p.style='Title';p.add_run(profile['name'])
-        h=doc.add_paragraph();h.add_run(profile['headline']).bold=True
-        doc.add_paragraph(" · ".join(x for x in [profile['city'],profile['email']] if x))
-        doc.add_heading('Work Experience',level=2)
-        for exp in profile['experiences'][:6]:
-            p=doc.add_paragraph();r=p.add_run(exp['title']);r.bold=True
-            doc.add_paragraph(exp['company']+" · "+exp['period'])
-            for bullet in exp['bullets'][:MAX_BULLETS]:
-                doc.add_paragraph(bullet,style='List Bullet')
-        verified=[c for c in proof or [] if c.get('verified') and c.get('approved') and c.get('evidence_id')]
+        head=doc.add_table(rows=1,cols=3)
+        head.alignment=WD_TABLE_ALIGNMENT.CENTER;head.autofit=False
+        widths=[Cm(2.9),Cm(9.45),Cm(4.6)]
+        for i,w in enumerate(widths):head.columns[i].width=w
+        cells=head.rows[0].cells
+        for i,w in enumerate(widths):cells[i].width=w
+        if profile["portrait"]:
+            p=cells[0].paragraphs[0];p.paragraph_format.space_after=Pt(0)
+            img=_round_portrait_png(profile["portrait"])
+            if img:p.add_run().add_picture(img,width=Cm(2.65))
+        p=cells[1].paragraphs[0];p.paragraph_format.space_after=Pt(4)
+        add_run(p,profile["name"],16.5,True,RGBColor(53,55,80))
+        paragraph(cells[1],profile["headline"],19,True,RGBColor(5,5,5),after=8)
+        p=cells[2].paragraphs[0]
+        p.paragraph_format.space_after=Pt(1)
+        for i,line in enumerate([profile["city"],profile["email"],profile["linkedin"]]):
+            if line:
+                if i:p.add_run("\n")
+                add_run(p,line,8.5,False,RGBColor(72,80,111))
+        doc.add_paragraph().paragraph_format.space_after=Pt(0)
+        tbl=doc.add_table(rows=1,cols=3)
+        tbl.autofit=False;tbl.alignment=WD_TABLE_ALIGNMENT.CENTER
+        column_widths=[Cm(11.6),Cm(.7),Cm(4.65)]
+        for i,w in enumerate(column_widths):tbl.columns[i].width=w
+        left,gap,right=tbl.rows[0].cells
+        for cell,w in zip((left,gap,right),column_widths):cell.width=w;cell.vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.TOP
+        p=left.paragraphs[0];p.paragraph_format.space_after=Pt(10)
+        add_run(p,"WORK EXPERIENCE",10.2,True,accent)
+        for exp in profile["experiences"][:6]:
+            p=paragraph(left,exp["title"],10.4,True,ink,after=2)
+            p=paragraph(left,exp["company"]+"  ·  "+exp["period"],8.3,True,ink,after=2)
+            for bullet in exp["bullets"][:MAX_BULLETS]:
+                p=paragraph(left,"•  "+bullet,8.1,False,muted,after=1.5)
+                p.paragraph_format.left_indent=Cm(.14)
+                p.paragraph_format.first_line_indent=Cm(-.12)
+            paragraph(left,after=4)
+        verified=[x for x in proof or [] if x.get("approved") and x.get("verified") and x.get("evidence_id")]
         if verified:
-            doc.add_heading('Selected Evidence',level=2)
-            for e in verified[:3]:doc.add_paragraph(e['claim'],style='List Bullet')
-        if profile['skills']:
-            doc.add_heading('Core Skills',level=2);doc.add_paragraph(' · '.join(profile['skills'][:12]))
+            paragraph(left,"SELECTED EVIDENCE",10.2,True,accent,after=5)
+            for x in verified[:3]:paragraph(left,"•  "+x["claim"],8.1,False,muted,after=2)
+        p=right.paragraphs[0];p.paragraph_format.space_after=Pt(9)
+        add_run(p,"CORE SKILLS",10.2,True,accent)
+        for skill in profile["skills"][:12]:
+            paragraph(right,skill,9,True,ink,after=4)
+        if profile["extras"]:
+            paragraph(right,"SELECTED EXPERTISE",10.2,True,accent,after=8)
+            for x in profile["extras"][:6]:
+                paragraph(right,x["heading"],9,True,ink,after=2)
+                paragraph(right,x["value"],8.1,False,muted,after=6)
     else:
-        doc.add_paragraph('COVER LETTER')
-        doc.add_heading(f"{job.get('title','')} · {job.get('company','')}",level=1)
-        doc.add_paragraph(profile['city']+' · '+profile['email'])
-        doc.add_paragraph('Dear '+str(job.get('company') or 'Hiring')+' team,')
-        for p in re.split(r"\n\s*\n",body or interest or ''):
-            if p.strip():doc.add_paragraph(p.strip())
-        doc.add_paragraph(profile['name'])
-    out=BytesIO();doc.save(out);return out.getvalue()
+        p=doc.add_paragraph()
+        p.paragraph_format.space_after=Pt(15)
+        add_run(p,"COVER LETTER",9.1,True,accent)
+        paragraph(doc,datetime.now(timezone.utc).strftime("%d %B %Y"),8.5,True,accent,after=10)
+        paragraph(doc,f"{job.get('title','')} · {job.get('company','')}",21,True,RGBColor(5,5,5),after=12)
+        paragraph(doc," · ".join(x for x in [profile["city"],profile["email"]] if x),8.5,False,muted,after=24)
+        paragraph(doc,"Dear "+str(job.get("company") or "Hiring")+" team,",9.4,False,ink,after=13)
+        approved_proof=[x for x in proof or [] if x.get("approved") and x.get("verified") and x.get("evidence_id")]
+        paragraphs=[v.strip() for v in re.split(r"\n\s*\n",body or interest or "") if v.strip()]
+        if not body and approved_proof:
+            paragraphs += ["My relevant documented work includes "+ "; ".join(x["claim"] for x in approved_proof[:2])+"."]
+        for i,item in enumerate(paragraphs[:6]):
+            p=paragraph(doc,item,9.3,i==0,ink,after=11)
+            p.alignment=WD_ALIGN_PARAGRAPH.JUSTIFY if i>0 else WD_ALIGN_PARAGRAPH.LEFT
+        paragraph(doc,profile["name"],9.6,True,ink,after=0)
+    out=BytesIO()
+    doc.save(out)
+    return out.getvalue()
