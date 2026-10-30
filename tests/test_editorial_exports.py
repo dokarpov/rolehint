@@ -46,6 +46,7 @@ def test_import_template_preserves_editorial_structure_and_no_script():
     assert imported["headline"]==PROFILE["headline"]
     assert len(imported["experiences"])==2
     assert imported["experiences"][0]["title"]=="Product Manager"
+    assert imported["experiences"][0]["company"]=="Example Learning"
     assert imported["approved"] is False
     assert "two-column" not in h
     malicious=dict(PROFILE,name="<script>alert(1)</script>")
@@ -66,7 +67,9 @@ def test_one_page_pdf_and_docx_renderer():
         raw=docx_from_html_data(profile,JOB,kind,[],
                                 "I want to improve the onboarding journey.","")
         doc=Document(io.BytesIO(raw))
-        assert "Jordan Example" in "\n".join(p.text for p in doc.paragraphs)
+        all_text="\n".join([p.text for p in doc.paragraphs]+[p.text for table in doc.tables for row in table.rows for cell in row.cells for p in cell.paragraphs])
+        assert "Jordan Example" in all_text
+        if kind=="cv":assert any(len(table.columns)==3 for table in doc.tables)
     letter=letter_html(profile,JOB,[],"I value the team’s open experimentation.")
     assert len(PdfReader(io.BytesIO(pdf_from_html(letter))).pages)==1
 
