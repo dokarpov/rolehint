@@ -1,0 +1,37 @@
+/* RoleHint editorial document workbench — mirrors owner's clean A4 template. */
+.editorial-panel{scroll-margin-top:24px}
+.editorial-intro{max-width:660px}
+.editorial-import{padding:17px 20px;border:1px solid var(--hair);border-radius:9px;background:#fbfcfa;margin:18px 0 24px}
+.editorial-import input[type=file]{width:100%;font-size:13px;max-width:100%;margin:10px 0}
+.editorial-import button{margin-top:4px}
+.editorial-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 18px}
+.editorial-grid .field{margin:0 0 9px}
+.editorial-grid input,.editorial-grid textarea{width:100%;min-width:0;border:1px solid #bac9bc;border-radius:6px;padding:11px 12px;color:var(--ink);background:#fff;font:inherit;font-size:14px}
+.editorial-grid input{min-height:46px}
+.editorial-grid textarea{min-height:82px;resize:vertical}
+.editorial-grid .field.full{grid-column:1/-1}
+.editorial-profile-footer{margin:20px 0 0;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.editorial-profile-footer>.check{flex:1 1 330px}
+.editorial-photo{width:108px;height:108px;border-radius:50%;object-fit:cover;clip-path:circle(50% at 50% 50%)}
+.editorial-portrait-picker{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin:14px 0}
+.editorial-portrait-picker input{max-width:100%}
+.editorial-portrait-preview{width:108px;height:108px;display:flex;align-items:center;justify-content:center;border-radius:54px;background:#f3f3f7;font-size:11px;text-align:center;color:var(--muted);overflow:hidden}
+.editorial-jobs{display:grid;gap:15px;margin:18px 0}
+.editorial-experience{min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 15px;border:1px solid var(--hair);border-radius:7px;padding:17px}
+.editorial-experience legend{font-weight:700;color:var(--ink);padding:0 6px}
+.editorial-experience .field{margin:0}
+.editorial-experience .field:has(textarea){grid-column:1/-1}
+.editorial-experience .editorial-remove{grid-column:1/-1;justify-self:start;min-height:39px}
+.editorial-experience .field label{display:block;font-size:12px;margin-bottom:6px}
+.editorial-experience .field input,.editorial-experience .field textarea{width:100%;min-width:0;font:inherit;border:1px solid #bac9bc;border-radius:6px;padding:10px}
+.editorial-experience .field input{height:44px}
+.editorial-experience .field textarea{resize:vertical}
+.editorial-documents{margin:20px 0;border-top:1px solid var(--hair);padding-top:20px}
+.editorial-documents textarea,.editorial-documents select{font:inherit;border:1px solid #bac9bc;border-radius:6px;padding:12px;background:#fff;color:var(--ink);width:100%;max-width:100%}
+.editorial-documents textarea{resize:vertical}
+.editorial-documents .field{margin:12px 0}
+.editorial-document-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.editorial-document-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}
+.editorial-document-buttons .btn{flex:0 0 auto}
+.editorial-panel a,.editorial-documents a{color:var(--sage)}
+@media(max-width:720px){.editorial-grid,.editorial-experience{grid-template-columns:1fr}.editorial-document-controls{grid-template-columns:1fr}.editorial-experience .field:has(textarea){grid-column:auto}.editorial-profile-footer>.btn,.editorial-document-buttons>.btn{width:100%}.editorial-import{padding:15px}}

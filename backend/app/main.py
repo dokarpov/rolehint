@@ -30,6 +30,9 @@ from .services.autopilot import EvidenceAutopilot, ensure_search_profiles
 from .services.funnel import weekly_plan, DEFAULT_POLICY, PACE_PRESETS, BREADTH_PRESETS, normalize_policy, submission_candidate
 from .services.connectors.gmail import GmailConnector, parse_job_email
 from .web_identity import init_routes as web_identity_routes
+from .web_identity import token_hash as web_token_hash
+from .services.oauth.google import WORKSPACE_SCOPES
+from .services.connectors.calendar import CalendarConnector
 
 app=FastAPI(title="Career Fit Agent API",version="1.8.0")
 
@@ -289,6 +292,174 @@ def me_timeline(x_telegram_init_data: str|None=Header(default=None,alias="X-Tele
     events=product.email_timeline(ident["user_id"])
     return {"state":reduce_application_state(events),"events":events}
 
+
+def _web_workspace_user(request:Request):
+    import time as _time
+    token=request.cookies.get("rh_session","")
+    if len(token)<30:raise HTTPException(401,"Please sign in")
+    row=product.conn.execute(
+        "SELECT user_id FROM web_sessions WHERE token_hash=? AND expires_at>?",
+        (web_token_hash(token),_time.time())).fetchone()
+    if not row:raise HTTPException(401,"Session expired")
+    return row["user_id"]
+
+def _web_workspace_origin(request:Request):
+    import hmac as _hmac
+    expected=os.getenv("CFA_WEB_APP_URL","").rstrip("/")
+    received=request.headers.get("origin") or ""
+    if not expected or not _hmac.compare_digest(expected,received):
+        raise HTTPException(403,"Invalid request origin")
+
+def _google_web_scopes(user_id):
+    row=product.connector_token(user_id,"google")
+    return set(str(row.get("scopes") or "").split()) if row else set()
+
+async def _workspace_google_token(uid,permission):
+    scopes=_google_web_scopes(uid)
+    required={
+        "gmail":"https://www.googleapis.com/auth/gmail.readonly",
+        "calendar":"https://www.googleapis.com/auth/calendar.events"
+    }
+    if required[permission] not in scopes:
+        raise HTTPException(403,"Reconnect Google and approve the requested "+permission+" scope")
+    token,_=await _google_access_token(uid)
+    return token
+
+@app.get("/web-api/google/status")
+def web_google_status(request:Request):
+    uid=_web_workspace_user(request)
+    scopes=_google_web_scopes(uid)
+    return {"connected":bool(product.connector_token(uid,"google")),
+            "gmail_readonly":"https://www.googleapis.com/auth/gmail.readonly" in scopes,
+            "calendar_events":"https://www.googleapis.com/auth/calendar.events" in scopes,
+            "can_send_email":False,"actions_need_approval":True}
+
+@app.post("/web-api/google/connect")
+def web_google_connect(request:Request):
+    _web_workspace_origin(request)
+    uid=_web_workspace_user(request)
+    if not _google.configured():
+        raise HTTPException(503,"Google OAuth is not configured for this deployment")
+    import secrets
+    state=secrets.token_urlsafe(24)
+    product.oauth_session(state,uid,"google-web","/webapp/",create=True)
+    return {"url":_google.authorize_url(state,scopes=WORKSPACE_SCOPES),
+            "requested_permissions":["Gmail read-only","Google Calendar events"]}
+
+@app.post("/web-api/google/disconnect")
+async def web_google_disconnect(request:Request):
+    _web_workspace_origin(request)
+    uid=_web_workspace_user(request)
+    row=product.connector_token(uid,"google")
+    if not row:return {"connected":False,"google_revoke":"not_required"}
+    # Disconnect affects only the logged-in RoleHint identity.
+    tok=decrypt_json(_token_cipher,row["encrypted_json"])
+    secret=tok.get("refresh_token") or tok.get("access_token")
+    status="not_attempted"
+    if secret:
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                revoked=await client.post("https://oauth2.googleapis.com/revoke",
+                                          data={"token":secret})
+                status="revoked" if revoked.status_code==200 else "revocation_unconfirmed"
+        except httpx.HTTPError:
+            status="revocation_unconfirmed"
+    product.conn.execute(
+        "DELETE FROM connector_tokens WHERE user_id=? AND provider='google'",(uid,))
+    product.conn.commit()
+    return {"connected":False,"google_revoke":status,
+            "message":"Local connection removed. Revoke access in your Google account if provider revocation was not confirmed."}
+
+@app.get("/web-api/google/inbox")
+async def web_google_inbox(request:Request):
+    uid=_web_workspace_user(request)
+    token=await _workspace_google_token(uid,"gmail")
+    import asyncio
+    connector=GmailConnector(token)
+    try:
+        ids=(await connector.search("in:inbox newer_than:30d",max_results=15))[:15]
+        semaphore=asyncio.Semaphore(4)
+        async def one(item):
+            async with semaphore:
+                try:
+                    msg=await connector.get(item["id"])
+                    parsed=parse_job_email(msg)
+                    return {
+                        "message_id":msg.get("id"),
+                        "thread_id":msg.get("threadId"),
+                        "subject":str(parsed.get("subject") or "")[:180],
+                        "from":str(parsed.get("from") or "")[:140],
+                        "date":str(parsed.get("date") or "")[:90],
+                        "suggested_event":parsed.get("event_type"),
+                        "confirmation":"Needs human review; no job status changed.",
+                        "url":"https://mail.google.com/mail/u/0/#all/"+str(msg.get("threadId") or msg.get("id"))
+                    }
+                except Exception:return None
+        items=await asyncio.gather(*(one(x) for x in ids if isinstance(x,dict)))
+    except Exception:
+        raise HTTPException(503,"Gmail could not be read. Check the connection.")
+    return {"messages":[x for x in items if x],
+            "source":"Gmail read-only; subjects are never automatically treated as applications or confirmed interviews."}
+
+@app.post("/web-api/google/inbox/link")
+async def web_google_link_message(request:Request):
+    _web_workspace_origin(request);uid=_web_workspace_user(request)
+    data=await request.json()
+    job_id=str(data.get("job_id") or "")
+    msg_id=str(data.get("message_id") or "")
+    kind=str(data.get("event_type") or "")
+    if data.get("approved") is not True:
+        raise HTTPException(409,"Review and explicitly approve this association")
+    if kind not in {"application_received","recruiter_or_interview","rejected","offer_candidate","other"}:
+        raise HTTPException(422,"Unsupported message classification")
+    if not product.job(uid,job_id):raise HTTPException(404,"Opportunity not found")
+    if not (5<=len(msg_id)<=120):raise HTTPException(422,"Invalid message")
+    token=await _workspace_google_token(uid,"gmail")
+    connector=GmailConnector(token)
+    try:msg=await connector.get(msg_id)
+    except Exception:raise HTTPException(503,"Could not verify this message in Gmail")
+    parsed=parse_job_email(msg)
+    parsed["event_type"]=kind
+    parsed["confirmed_by_user"]=True
+    parsed["classification_source"]="manual_confirmation"
+    did_add=product.add_email_event(uid,parsed,job_id)
+    return {"linked":bool(did_add),"duplicate":not did_add,
+            "job_id":job_id,"event_type":kind,
+            "warning":"This records an email, not a confirmed job application or offer."}
+
+@app.get("/web-api/google/calendar")
+async def web_google_calendar(request:Request):
+    uid=_web_workspace_user(request)
+    token=await _workspace_google_token(uid,"calendar")
+    from datetime import datetime,timedelta,timezone
+    now=datetime.now(timezone.utc)
+    try:events=await CalendarConnector(token).list_events(now,now+timedelta(days=21))
+    except Exception:raise HTTPException(503,"Google Calendar could not be read")
+    return {"events":events,
+            "source":"Google Calendar. No events are created without explicit approval."}
+
+@app.post("/web-api/google/calendar/preparation")
+async def web_google_create_preparation(request:Request):
+    _web_workspace_origin(request);uid=_web_workspace_user(request)
+    data=await request.json()
+    if data.get("approved") is not True:
+        raise HTTPException(409,"Approve the calendar event before creating it")
+    job_id=str(data.get("job_id") or "")
+    job=product.job(uid,job_id)
+    if not job:raise HTTPException(404,"Opportunity not found")
+    title="Prepare · "+str(job.get("company") or "Employer")+" · "+str(job.get("title") or "Interview")
+    summary=title[:140]
+    description="RoleHint preparation for "+str(job.get("title") or "")+" at "+str(job.get("company") or "")+"\n"+str(job.get("source_url") or "")
+    token=await _workspace_google_token(uid,"calendar")
+    try:
+        result=await CalendarConnector(token).create_preparation(
+            uid,job_id,data.get("start",""),data.get("minutes",45),
+            summary,description,"Europe/Madrid")
+    except ValueError as err:raise HTTPException(409,str(err))
+    except Exception:raise HTTPException(503,"Calendar could not verify availability or create the event")
+    return result
+
 @app.post("/me/connectors/google/start")
 def google_connect_start(x_telegram_init_data: str|None=Header(default=None,alias="X-Telegram-Init-Data")):
     ident=_identity(x_telegram_init_data)
@@ -302,29 +473,58 @@ def google_connect_start(x_telegram_init_data: str|None=Header(default=None,alia
 @app.get("/oauth/google/callback")
 async def google_callback(state:str,code:str):
     sess=product.oauth_session(state)
-    if not sess: raise HTTPException(400,"Invalid OAuth state")
-    tokens=await _google.exchange(code)
+    if not sess or sess.get("provider") not in {"google","google-web"}:
+        raise HTTPException(400,"Invalid OAuth state")
     import time as _time
+    if _time.time()-float(sess.get("created_at") or 0)>600:
+        product.delete_oauth_session(state)
+        raise HTTPException(400,"OAuth state expired; try connecting again")
+    # One-time OAuth state: consume before token exchange to prevent replay.
+    product.delete_oauth_session(state)
+    tokens=await _google.exchange(code)
     tokens["obtained_at"]=_time.time()
     tokens["expires_at"]=_time.time()+int(tokens.get("expires_in",3600))
-    product.save_connector_token(sess["user_id"],"google",encrypt_json(_token_cipher,tokens),"gmail.readonly drive.readonly")
+    scopes=str(tokens.get("scope") or "")
+    if sess["provider"]=="google-web":
+        required=("https://www.googleapis.com/auth/gmail.readonly",
+                  "https://www.googleapis.com/auth/calendar.events")
+        if scopes and not all(x in scopes.split() for x in required):
+            raise HTTPException(403,"Google did not grant the requested Gmail and Calendar permissions")
+    # Do not overwrite a saved refresh token with None on reconnect.
+    previous=product.connector_token(sess["user_id"],"google")
+    if previous and not tokens.get("refresh_token"):
+        try:
+            old=decrypt_json(_token_cipher,previous["encrypted_json"])
+            if old.get("refresh_token"):tokens["refresh_token"]=old["refresh_token"]
+        except Exception:
+            pass
+    product.save_connector_token(sess["user_id"],"google",
+        encrypt_json(_token_cipher,tokens),scopes or (
+        "gmail.readonly calendar.events" if sess["provider"]=="google-web" else
+        "gmail.readonly drive.readonly"))
     product.mark_source_sync(sess["user_id"],"google","pending",0)
-    product.delete_oauth_session(state)
+    if sess["provider"]=="google-web":
+        return RedirectResponse("/webapp/?connected=google")
     target=(sess.get("redirect_uri") or runtime_config().mini_app_url or "/")
     sep="&" if "?" in target else "?"
     return RedirectResponse(target+sep+"connected=google")
 
 async def _google_access_token(user_id):
+    import time as _time
     rec=product.connector_token(user_id,"google")
     if not rec: raise HTTPException(404,"Google connector not connected")
     tok=decrypt_json(_token_cipher,rec["encrypted_json"])
-    # Google access tokens typically expire in ~3600s; store created_at locally if known.
-    # Refresh on 401 in the sync path or when no access token is present.
-    if tok.get("access_token"): return tok["access_token"],tok
-    if not tok.get("refresh_token"): raise HTTPException(401,"Google connector requires reauthorization")
+    if tok.get("access_token") and float(tok.get("expires_at") or 0)>_time.time()+60:
+        return tok["access_token"],tok
+    if not tok.get("refresh_token"):
+        raise HTTPException(401,"Google connector requires reauthorization")
     fresh=await _google.refresh(tok["refresh_token"])
     fresh["refresh_token"]=tok["refresh_token"]
-    product.save_connector_token(user_id,"google",encrypt_json(_token_cipher,fresh),rec.get("scopes",""))
+    fresh["obtained_at"]=_time.time()
+    fresh["expires_at"]=_time.time()+int(fresh.get("expires_in",3600))
+    fresh["scope"]=fresh.get("scope") or tok.get("scope") or ""
+    product.save_connector_token(user_id,"google",encrypt_json(_token_cipher,fresh),
+        rec.get("scopes",""))
     return fresh["access_token"],fresh
 
 @app.post("/me/connectors/github/start")
