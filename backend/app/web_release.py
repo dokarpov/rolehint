@@ -10,6 +10,7 @@ from .services.job_search import JobSearchService
 from .services.auto_match import AutoMatchService
 from .services.auto_match.service import extract_constraints, evaluate_constraints
 from .services.application_packs import markdown as pack_markdown
+from .services.application_tracking.board import build_application_board
 
 def _envlist(name):
     return [x.strip() for x in os.getenv(name,"").split(",") if x.strip()]
@@ -80,6 +81,21 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
                 j=jobs.get(e.get("job_id"))
                 if j:employer_rejections.add(j["company"].casefold())
         return submissions,applied,employer_rejections
+
+    @router.get("/application-board")
+    def application_board(request:Request):
+        """Read-only, user-scoped pipeline; opening an ATS form is never a submission."""
+        uid=require_user(request)
+        # These queries intentionally do not join across users and do not
+        # return raw CVs, application-pack contents or connector credentials.
+        handoffs={r["job_id"]:dict(r) for r in store.execute(
+            "SELECT job_id,state,approved_at FROM web_application_handoffs WHERE user_id=?",
+            (uid,)).fetchall()}
+        packs={r["job_id"]:dict(r) for r in store.execute(
+            "SELECT job_id,version,updated_at FROM application_packs WHERE user_id=?",
+            (uid,)).fetchall()}
+        return build_application_board(
+            product.jobs(uid), product.submissions(uid), handoffs, packs)
 
     @router.get("/release-state")
     def release_state(request:Request):
