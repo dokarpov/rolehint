@@ -302,29 +302,58 @@ def google_connect_start(x_telegram_init_data: str|None=Header(default=None,alia
 @app.get("/oauth/google/callback")
 async def google_callback(state:str,code:str):
     sess=product.oauth_session(state)
-    if not sess: raise HTTPException(400,"Invalid OAuth state")
-    tokens=await _google.exchange(code)
+    if not sess or sess.get("provider") not in {"google","google-web"}:
+        raise HTTPException(400,"Invalid OAuth state")
     import time as _time
+    if _time.time()-float(sess.get("created_at") or 0)>600:
+        product.delete_oauth_session(state)
+        raise HTTPException(400,"OAuth state expired; try connecting again")
+    # One-time OAuth state: consume before token exchange to prevent replay.
+    product.delete_oauth_session(state)
+    tokens=await _google.exchange(code)
     tokens["obtained_at"]=_time.time()
     tokens["expires_at"]=_time.time()+int(tokens.get("expires_in",3600))
-    product.save_connector_token(sess["user_id"],"google",encrypt_json(_token_cipher,tokens),"gmail.readonly drive.readonly")
+    scopes=str(tokens.get("scope") or "")
+    if sess["provider"]=="google-web":
+        required=("https://www.googleapis.com/auth/gmail.readonly",
+                  "https://www.googleapis.com/auth/calendar.events")
+        if scopes and not all(x in scopes.split() for x in required):
+            raise HTTPException(403,"Google did not grant the requested Gmail and Calendar permissions")
+    # Do not overwrite a saved refresh token with None on reconnect.
+    previous=product.connector_token(sess["user_id"],"google")
+    if previous and not tokens.get("refresh_token"):
+        try:
+            old=decrypt_json(_token_cipher,previous["encrypted_json"])
+            if old.get("refresh_token"):tokens["refresh_token"]=old["refresh_token"]
+        except Exception:
+            pass
+    product.save_connector_token(sess["user_id"],"google",
+        encrypt_json(_token_cipher,tokens),scopes or (
+        "gmail.readonly calendar.events" if sess["provider"]=="google-web" else
+        "gmail.readonly drive.readonly"))
     product.mark_source_sync(sess["user_id"],"google","pending",0)
-    product.delete_oauth_session(state)
+    if sess["provider"]=="google-web":
+        return RedirectResponse("/webapp/?connected=google")
     target=(sess.get("redirect_uri") or runtime_config().mini_app_url or "/")
     sep="&" if "?" in target else "?"
     return RedirectResponse(target+sep+"connected=google")
 
 async def _google_access_token(user_id):
+    import time as _time
     rec=product.connector_token(user_id,"google")
     if not rec: raise HTTPException(404,"Google connector not connected")
     tok=decrypt_json(_token_cipher,rec["encrypted_json"])
-    # Google access tokens typically expire in ~3600s; store created_at locally if known.
-    # Refresh on 401 in the sync path or when no access token is present.
-    if tok.get("access_token"): return tok["access_token"],tok
-    if not tok.get("refresh_token"): raise HTTPException(401,"Google connector requires reauthorization")
+    if tok.get("access_token") and float(tok.get("expires_at") or 0)>_time.time()+60:
+        return tok["access_token"],tok
+    if not tok.get("refresh_token"):
+        raise HTTPException(401,"Google connector requires reauthorization")
     fresh=await _google.refresh(tok["refresh_token"])
     fresh["refresh_token"]=tok["refresh_token"]
-    product.save_connector_token(user_id,"google",encrypt_json(_token_cipher,fresh),rec.get("scopes",""))
+    fresh["obtained_at"]=_time.time()
+    fresh["expires_at"]=_time.time()+int(fresh.get("expires_in",3600))
+    fresh["scope"]=fresh.get("scope") or tok.get("scope") or ""
+    product.save_connector_token(user_id,"google",encrypt_json(_token_cipher,fresh),
+        rec.get("scopes",""))
     return fresh["access_token"],fresh
 
 @app.post("/me/connectors/github/start")
