@@ -9,6 +9,7 @@ pypdf>=5.0
 scikit-learn>=1.5
 numpy>=2.0
 python-docx>=1.1
+weasyprint>=67,<69
 openpyxl>=3.1
 
 cryptography>=43.0
