@@ -59,6 +59,27 @@ def test_official_platform_callbacks_are_allowed(oauth):
         assert result["redirect_uris"]==[uri]
 
 
+def test_signed_out_handoff_restores_exact_oauth_request_once(oauth):
+    callback="https://claude.ai/api/mcp/auth_callback"
+    client_id=oauth.register({"redirect_uris":[callback]})["client_id"]
+    verifier=secrets.token_urlsafe(48)
+    query={"client_id":client_id,"redirect_uri":callback,
+        "response_type":"code","code_challenge_method":"S256",
+        "code_challenge":pkce(verifier),"resource":oauth.resource,
+        "scope":"evidence:read","state":secrets.token_urlsafe(24)}
+    ticket=oauth.stage_for_login(query)
+    assert oauth.pending_login(ticket)
+    restored=oauth.resume_login("u1","browser-session",ticket)
+    assert restored==query
+    assert not oauth.pending_login(ticket)
+    with pytest.raises(ValueError):
+        oauth.resume_login("u1","browser-session",ticket)
+    request_id,scope=oauth.authorize("u1","browser-session",restored)
+    assert scope==["evidence:read"]
+    url=oauth.consent("u1","browser-session",request_id,True)
+    assert parse_qs(urlsplit(url).query)["state"]==[query["state"]]
+
+
 def test_invalid_scope_and_wrong_audience_rejected(oauth):
     cid=oauth.register({"redirect_uris":["https://claude.ai/api/mcp/auth_callback"]})["client_id"]
     for scope,resource in [("evidence:admin",oauth.resource),("evidence:read","https://evil.example/mcp")]:
