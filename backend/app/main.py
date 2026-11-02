@@ -59,6 +59,46 @@ hybrid=HybridRetriever(store,vector)
 product=ProductStore(DATA_DIR/"product_state.db")
 auto_match=AutoMatchService(product)
 app.include_router(web_identity_routes(product))
+# Optional hosted Claude/ChatGPT connector. Disabled by default, including production.
+# It shares the existing ProductStore but never accepts browser cookies as MCP tokens.
+if os.getenv("CFA_REMOTE_MCP_ENABLED","0")=="1":
+    import hashlib, hmac, sqlite3, time
+    from contextlib import asynccontextmanager
+    from .evidence_cloud import EvidenceCloud
+    from .evidence_oauth import OAuthServer
+    from .evidence_oauth_routes import create_routes as oauth_routes
+    from .evidence_remote_mcp import create_remote_server
+
+    _identity_db=DATA_DIR/"product_state.db"
+    _origin=os.getenv("CFA_WEB_APP_URL","").rstrip("/")
+    _oauth=OAuthServer(_identity_db,_origin,
+      allow_loopback=os.getenv("CFA_REMOTE_MCP_DEV","0")=="1")
+    _evidence=EvidenceCloud(_identity_db)
+
+    def _connector_web_user(request:Request):
+        cookie=request.cookies.get("rh_session","")
+        if len(cookie)<30:raise HTTPException(401,"Sign in to RoleHint")
+        with sqlite3.connect(str(_identity_db)) as conn:
+            row=conn.execute("SELECT user_id FROM web_sessions WHERE token_hash=? AND expires_at>?",
+                 (hashlib.sha256(cookie.encode()).hexdigest(),time.time())).fetchone()
+        if not row:raise HTTPException(401,"Session expired")
+        return row[0]
+
+    def _connector_origin(request:Request):
+        supplied=request.headers.get("origin","")
+        if not _origin or not hmac.compare_digest(_origin,supplied):
+            raise HTTPException(403,"Invalid request origin")
+
+    app.include_router(oauth_routes(_oauth,_connector_web_user,_connector_origin))
+    _remote_mcp,_remote_asgi=create_remote_server(_oauth,_evidence)
+    app.mount("/mcp",_remote_asgi)
+
+    @asynccontextmanager
+    async def _remote_mcp_lifespan(application):
+        async with _remote_mcp.session_manager.run():
+            yield
+    app.router.lifespan_context=_remote_mcp_lifespan
+
 local_secrets=LocalSecretStore(DATA_DIR/"local_secrets.json")
 _runtime=runtime_config()
 _token_cipher=cipher_for(DATA_DIR,_runtime.managed)
