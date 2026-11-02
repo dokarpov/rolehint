@@ -93,6 +93,15 @@ class EvidenceCloud:
             if row is None:raise CandidateNotFound()
             return self.public(row)
 
+    def get_candidate(self,uid,cid):
+        # Fetch by primary key AND owner: do not truncate access to the first
+        # page of candidates, or expose another account's source text.
+        with self.connection() as db:
+            row=db.execute("SELECT * FROM evidence_candidates WHERE user_id=? AND id=?",
+                           (uid,cid)).fetchone()
+            if row is None:raise CandidateNotFound()
+            return self.public(row)
+
     def propose(self,uid,candidates:list[CandidateInput]):
         if not 1<=len(candidates)<=5:raise ValueError("Submit 1–5 candidates")
         with self.connection() as db:
