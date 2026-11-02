@@ -25,17 +25,26 @@ def create_routes(server:OAuthServer,require_user,check_origin):
 
     @r.post("/oauth/register")
     async def register(request:Request):
-        if int(request.headers.get("content-length","0") or "0")>4096:
-            raise HTTPException(413,"Registration too large")
-        try:response=server.register(
-            await request.json(),
-            source=request.client.host if request.client is not None else "unknown")
+        payload=bytearray()
+        async for chunk in request.stream():
+            payload.extend(chunk)
+            if len(payload)>4096:
+                raise HTTPException(413,"Registration too large")
+        try:
+            parsed=json.loads(payload)
+            response=server.register(
+                parsed,
+                source=request.client.host if request.client is not None else "unknown")
+        except (json.JSONDecodeError,UnicodeDecodeError) as e:
+            raise HTTPException(400,"Malformed registration JSON") from e
         except OAuthRateLimit as e:raise HTTPException(429,str(e)) from e
         except (ValueError,TypeError) as e:raise HTTPException(400,str(e)) from e
         return JSONResponse(response,status_code=201,headers={"Cache-Control":"no-store"})
 
     @r.get("/oauth/authorize")
     def authorize(request:Request):
+        if len(request.url.query)>4096:
+            raise HTTPException(414,"OAuth request URL too long")
         try:uid=require_user(request)
         except HTTPException as error:
             if error.status_code!=401:raise
@@ -45,6 +54,7 @@ def create_routes(server:OAuthServer,require_user,check_origin):
             return RedirectResponse("/webapp/evidence.html?connect="+ticket,status_code=303,
               headers={"Cache-Control":"no-store","Referrer-Policy":"no-referrer"})
         try:req_id,scope=server.authorize(uid,request.cookies.get("rh_session",""),dict(request.query_params))
+        except OAuthRateLimit as e:raise HTTPException(429,str(e)) from e
         except ValueError as e:raise HTTPException(400,str(e)) from e
         page="""<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>
           <title>Authorize RoleHint connection</title><main style='font:16px/1.55 system-ui;max-width:550px;margin:7vh auto;padding:20px'>
