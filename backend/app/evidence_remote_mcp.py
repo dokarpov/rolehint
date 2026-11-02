@@ -27,7 +27,8 @@ def current_user(scope):
 def create_remote_server(oauth:OAuthServer,inbox:EvidenceCloud):
     server=MCPServer("RoleHint Evidence",token_verifier=RoleHintVerifier(oauth),
       auth=AuthSettings(issuer_url=AnyHttpUrl(oauth.base),
-                        resource_server_url=AnyHttpUrl(oauth.resource),required_scopes=[],validate_token_resource=True))
+                        resource_server_url=AnyHttpUrl(oauth.resource),
+                        required_scopes=[],validate_token_resource=True,validate_token_resource=True))
 
     @server.tool()
     def list_evidence_candidates(status:str="needs-review",limit:int=20)->dict:
@@ -42,9 +43,12 @@ def create_remote_server(oauth:OAuthServer,inbox:EvidenceCloud):
     def get_evidence_candidate(candidate_id:str)->dict:
         """Open one previously saved private claim and source passage. Requires evidence:read."""
         uid=current_user("evidence:read")
-        for x in inbox.list_candidates(uid,limit=100):
-            if x["id"]==candidate_id:return x
-        return {"error":"Evidence not found or not authorized"}
+        try:return inbox.get_candidate(uid,candidate_id)
+        except Exception as error:
+            from .evidence_cloud import CandidateNotFound
+            if isinstance(error,CandidateNotFound):
+                return {"error":"Evidence not found or not authorized"}
+            raise
 
     @server.tool()
     def propose_evidence(claim:str,source_excerpt:str,project:str,source_ref:str,
