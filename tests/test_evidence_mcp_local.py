@@ -15,7 +15,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] /
                        "integrations" / "evidence_mcp_local"))
 from inbox import (  # noqa: E402
-    propose_text, propose_file, list_drafts, get_draft, discard_draft,
+    propose_text, propose_file, list_allowed_files, list_drafts, get_draft, discard_draft,
 )
 
 
@@ -81,6 +81,36 @@ class LocalEvidenceInboxTests(unittest.TestCase):
         os.environ.pop("ROLEHINT_ALLOWED_FOLDER")
         with self.assertRaises(PermissionError):
             propose_file("readme.md", "No implicit home access")
+
+    def test_explicit_file_browser_lists_one_folder_without_reading_or_following_symlinks(self):
+        (self.allowed / "README.md").write_text("Approved overview", encoding="utf-8")
+        (self.allowed / "private.json").write_text("private content", encoding="utf-8")
+        (self.allowed / ".env").write_text("hidden", encoding="utf-8")
+        nested = self.allowed / "src"
+        nested.mkdir()
+        (nested / "design.md").write_text("Nested project plan", encoding="utf-8")
+        (self.allowed / "outside.md").symlink_to(self.root / "secret.md")
+        (self.root / "secret.md").write_text("secret", encoding="utf-8")
+        files = list_allowed_files()
+        names = [x["relative_path"] for x in files["entries"]]
+        self.assertIn("README.md", names)
+        self.assertIn("src", names)
+        self.assertNotIn("src/design.md", names)
+        self.assertNotIn(".env", names)
+        self.assertNotIn("outside.md", names)
+        self.assertFalse(files["recursive"])
+        self.assertFalse(files["contents_read"])
+        detail = list_allowed_files("src")
+        self.assertEqual(detail["entries"][0]["relative_path"], "src/design.md")
+        for bad in ("../", "/etc", ".git", "outside.md"):
+            with self.subTest(bad=bad), self.assertRaises((PermissionError, ValueError)):
+                list_allowed_files(bad)
+        # An internal symlink may also bypass a forbidden directory.
+        (self.allowed / ".private").mkdir()
+        (self.allowed / ".private" / "notes.md").write_text("private", encoding="utf-8")
+        (self.allowed / "alias").symlink_to(self.allowed / ".private", target_is_directory=True)
+        with self.assertRaises(PermissionError):
+            propose_file("alias/notes.md", "Hidden notes")
 
     def test_possible_credentials_and_oversized_selection_are_rejected(self):
         with self.assertRaises(ValueError):
