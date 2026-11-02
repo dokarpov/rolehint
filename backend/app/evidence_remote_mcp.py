@@ -6,7 +6,7 @@ from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.provider import AccessToken,TokenVerifier
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.transport_security import TransportSecuritySettings
-from .evidence_cloud import EvidenceCloud,CandidateInput
+from .evidence_cloud import EvidenceCloud,CandidateInput,CandidateNotFound
 from .evidence_oauth import OAuthServer
 
 class RoleHintVerifier(TokenVerifier):
@@ -44,11 +44,8 @@ def create_remote_server(oauth:OAuthServer,inbox:EvidenceCloud):
         """Open one previously saved private claim and source passage. Requires evidence:read."""
         uid=current_user("evidence:read")
         try:return inbox.get_candidate(uid,candidate_id)
-        except Exception as error:
-            from .evidence_cloud import CandidateNotFound
-            if isinstance(error,CandidateNotFound):
-                return {"error":"Evidence not found or not authorized"}
-            raise
+        except CandidateNotFound:
+            return {"error":"Evidence not found or not authorized"}
 
     @server.tool()
     def propose_evidence(claim:str,source_excerpt:str,project:str,source_ref:str,
