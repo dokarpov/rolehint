@@ -190,7 +190,10 @@ def init_routes(product):
         digest=token_hash(token)
         conn.execute("INSERT INTO web_login_links VALUES(?,?,?,?,?)",(digest,email,now+900,None,now))
         conn.commit()
-        try:send_email(email,base+"/web-api/callback?token="+token,host,sender)
+        next_page=str(body.get("next") or "")
+        if next_page not in ("","evidence"):raise HTTPException(422,"Invalid return destination")
+        return_suffix="&next=evidence" if next_page=="evidence" else ""
+        try:send_email(email,base+"/web-api/callback?token="+token+return_suffix,host,sender)
         except Exception:
             conn.execute("DELETE FROM web_login_links WHERE token_hash=?",(digest,));conn.commit()
             raise HTTPException(503,"Email delivery unavailable")
