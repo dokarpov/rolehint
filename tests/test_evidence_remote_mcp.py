@@ -24,16 +24,6 @@ def init_payload():
         "protocolVersion":"2025-06-18","capabilities":{},
         "clientInfo":{"name":"rolehint-ci-integration","version":"1.0"}}}
 
-def test_remote_mcp_requires_token_and_advertises_oauth():
-    with TestClient(app,base_url=BASE) as client:
-        doc=client.get("/.well-known/oauth-protected-resource/mcp")
-        assert doc.status_code==200,doc.text
-        assert doc.json()["resource"]==BASE+"/mcp"
-        result=client.post("/mcp",json=init_payload(),headers=MCP_HEADERS)
-        assert result.status_code==401,result.text
-        assert "WWW-Authenticate" in result.headers
-        assert "/.well-known/oauth-protected-resource" in result.headers["WWW-Authenticate"]
-
 def _browser_user(client):
     uid="web_evidence_ci_"+uuid.uuid4().hex
     now=time.time()
@@ -88,7 +78,15 @@ def _rpc(client,token,body,session=None):
     return response
 
 def test_complete_oauth_mcp_capture_review_and_revocation():
+    # The official MCP session manager is single-lifespan. Exercise the
+    # entire unauthenticated→consent→tool→revocation journey in one TestClient.
     with TestClient(app,base_url=BASE) as client:
+        doc=client.get("/.well-known/oauth-protected-resource/mcp")
+        assert doc.status_code==200,doc.text
+        assert doc.json()["resource"]==BASE+"/mcp"
+        no_token=client.post("/mcp",json=init_payload(),headers=MCP_HEADERS)
+        assert no_token.status_code==401,no_token.text
+        assert "WWW-Authenticate" in no_token.headers
         _browser_user(client)
         client_id,access=_get_access(client,"evidence:read evidence:propose")
         init=_rpc(client,access,init_payload())
