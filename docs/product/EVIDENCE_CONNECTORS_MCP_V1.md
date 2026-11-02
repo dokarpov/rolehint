@@ -2,6 +2,10 @@
 **Status:** approved product direction / staged implementation contract; not yet a connected or production-accepted plugin.
 **Review:** 2026-11-02. **Priority:** P1, run alongside first-value/matching; depends on identity, privacy, evidence consistency and staged storage.
 
+## Implementation status (2026-11-02)
+
+EVC-0 source prototype was added to `integrations/evidence_mcp_local/` with a local stdio MCP server, allowlisted file/selected-text drafting, a private SQLite candidate inbox, explicit discard and automated regression cases (`tests/test_evidence_mcp_local.py`). CI configuration: `.github/workflows/evidence-mcp-local.yml`. **Not yet verified installed in Claude Desktop, packaged as .mcpb, or connected to any user's RoleHint cloud account**. ChatGPT remote MCP and OAuth evidence inbox do not yet exist. Work tracked at [DAR-85](https://linear.app/dokarpov/issue/DAR-85/evc-0-installable-claude-desktop-evidence-collector-local-mcp) and [DAR-86](https://linear.app/dokarpov/issue/DAR-86/evc-12-rolehint-evidence-inbox-secure-remote-mcp-for-claude-and). No production deployment.
+
 ## Why this is missing
 
 RoleHint already implements SQLite-backed `user_evidence` + FTS5/BM25, human review/provenance, GitHub and Google Drive evidence imports, and a Telegram-authenticated `POST /me/evidence`. But it has **no MCP server**, no scoped OAuth client authorization for external assistants, no safe computer-folder picker or local extension, and no ChatGPT/Claude transcript import. Thus it cannot yet be added as a genuine Claude/ChatGPT connector. A product's backend running on Railway does not grant either AI host access to a user's local Mac.
