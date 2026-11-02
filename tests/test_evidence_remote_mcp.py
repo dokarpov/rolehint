@@ -63,7 +63,7 @@ def _get_access(client,scope):
       "redirect_uri":callback,"code":code,"code_verifier":verifier,
       "resource":BASE+"/mcp"})
     assert token.status_code==200,token.text
-    assert token.json()["scope"]==scope
+    assert set(token.json()["scope"].split())==set(scope.split())
     replay=client.post("/oauth/token",data={
       "grant_type":"authorization_code","client_id":client_id,
       "redirect_uri":callback,"code":code,"code_verifier":verifier,
