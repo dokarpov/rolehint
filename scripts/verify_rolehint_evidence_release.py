@@ -30,6 +30,13 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     "tests/test_evidence_remote_mcp.py": ("test_complete_oauth_mcp_capture_review_and_revocation",),
     "tests/test_evidence_storage_recovery.py": ("test_backup_restore_preserves_user_provenance_tokens_and_fts", "test_approval_failure_rolls_back"),
     "site/qa-evidence.mjs": ("PASS Evidence Inbox mobile/browser", "guest"),
+    "tests/test_evidence_staging_preflight.py": ("test_preflight_does_not_access_production",),
+    "scripts/evidence_staging_preflight.py": ("FORBIDDEN", "full_release_gate_passed"),
+    "scripts/verify_rolehint_evidence_release.py": ("def inventory()",),
+    ".github/workflows/evidence-staging-preflight.yml": ("ROLEHINT_STAGING_URL",),
+    "deploy/evidence-staging.env.example": ("CFA_REMOTE_MCP_ENABLED=1",),
+    "deploy/README.md": ("Free plan resource provision limit exceeded",),
+
     "docs/product/EVIDENCE_WEB_RELEASE_2026-11-02.md": ("NOT deployed",),
     ".github/workflows/backend-release-gate.yml": ("test_evidence_remote_mcp.py",),
     ".github/workflows/release-qa.yml": ("node site/qa-evidence.mjs",),
