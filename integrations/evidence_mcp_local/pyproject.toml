@@ -1,6 +1,6 @@
 [project]
 name = "rolehint-evidence-local"
-version = "0.2.0"
+version = "0.2.1"
 description = "Private evidence drafts from selected local work via MCP"
 requires-python = ">=3.11"
 dependencies = ["mcp>=2,<3"]
