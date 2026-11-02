@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS rh_oauth_refresh(
  client_id TEXT NOT NULL,scope TEXT NOT NULL,resource TEXT NOT NULL,expires_at REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS rh_oauth_access_user ON rh_oauth_access(user_id,client_id);
 CREATE INDEX IF NOT EXISTS rh_oauth_refresh_user ON rh_oauth_refresh(user_id,client_id);
+CREATE TABLE IF NOT EXISTS rh_oauth_login_handoffs(
+ ticket_hash TEXT PRIMARY KEY,request_json TEXT NOT NULL,
+ created_at REAL NOT NULL,expires_at REAL NOT NULL);
 """
 SCOPES={"evidence:read","evidence:propose"}
 CLAUDE_REDIRECTS={"https://claude.ai/api/mcp/auth_callback",
@@ -73,7 +76,7 @@ class OAuthServer:
         return {"client_id":cid,"client_name":name,"redirect_uris":uris,
                 "token_endpoint_auth_method":"none","grant_types":["authorization_code","refresh_token"],
                 "response_types":["code"],"client_id_issued_at":int(time.time())}
-    def authorize(self,uid,session_token,query):
+    def _validate_authorize(self,query):
         cid=query.get("client_id","");redirect=query.get("redirect_uri","")
         with self.db() as conn:
             row=conn.execute("SELECT * FROM rh_oauth_clients WHERE id=?",(cid,)).fetchone()
@@ -90,6 +93,53 @@ class OAuthServer:
         state=query.get("state","")
         if not 12<=len(state)<=512 or any(ord(c)<33 for c in state):
             raise ValueError("Invalid state")
+        return cid,redirect,challenge,requested,state
+
+    def stage_for_login(self,query):
+        # Keep an OAuth request for a user who must sign in by email first.
+        # A ticket cannot authorize tools; it only restores the user's
+        # exact registered-client/PKCE request at the consent screen.
+        self._validate_authorize(query)
+        serialized=json.dumps(query,ensure_ascii=False,separators=(",",":"))
+        if len(serialized)>4096:raise ValueError("OAuth request is too long")
+        now=time.time()
+        ticket=secrets.token_urlsafe(32)
+        with self.db() as conn:
+            conn.execute("DELETE FROM rh_oauth_login_handoffs WHERE expires_at<?",(now,))
+            conn.execute("INSERT INTO rh_oauth_login_handoffs VALUES(?,?,?,?)",
+                         (hashed(ticket),serialized,now,now+900))
+        return ticket
+
+    def pending_login(self,ticket):
+        if not re.fullmatch(r"[A-Za-z0-9_-]{32,96}",str(ticket)):
+            return False
+        with self.db() as conn:
+            return conn.execute(
+                "SELECT 1 FROM rh_oauth_login_handoffs WHERE ticket_hash=? AND expires_at>?",
+                (hashed(ticket),time.time())).fetchone() is not None
+
+    def resume_login(self,uid,session_token,ticket):
+        if not self.pending_login(ticket):
+            raise ValueError("Connection sign-in expired; reconnect the assistant")
+        with self.db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                row=conn.execute(
+                  "SELECT request_json FROM rh_oauth_login_handoffs WHERE ticket_hash=? AND expires_at>?",
+                  (hashed(ticket),time.time())).fetchone()
+                if not row:raise ValueError("Connection ticket expired or used")
+                conn.execute("DELETE FROM rh_oauth_login_handoffs WHERE ticket_hash=?",(hashed(ticket),))
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
+        query=json.loads(row["request_json"])
+        # Revalidate client and callback even if configuration changed during login.
+        self._validate_authorize(query)
+        return query
+
+    def authorize(self,uid,session_token,query):
+        cid,redirect,challenge,requested,state=self._validate_authorize(query)
         request_id=secrets.token_urlsafe(32)
         with self.db() as conn:
             conn.execute("DELETE FROM rh_oauth_requests WHERE expires_at<?",(time.time(),))
