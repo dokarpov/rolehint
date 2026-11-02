@@ -27,7 +27,7 @@ def current_user(scope):
 def create_remote_server(oauth:OAuthServer,inbox:EvidenceCloud):
     server=MCPServer("RoleHint Evidence",token_verifier=RoleHintVerifier(oauth),
       auth=AuthSettings(issuer_url=AnyHttpUrl(oauth.base),
-                        resource_server_url=AnyHttpUrl(oauth.resource),required_scopes=[]))
+                        resource_server_url=AnyHttpUrl(oauth.resource),required_scopes=[],validate_token_resource=True))
 
     @server.tool()
     def list_evidence_candidates(status:str="needs-review",limit:int=20)->dict:
