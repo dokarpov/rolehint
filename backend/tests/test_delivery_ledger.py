@@ -39,8 +39,9 @@ class DeliveryLedgerTests(unittest.TestCase):
         self.assertEqual(states.count("delivered"), 10)
         self.assertEqual(states.count("exhausted"), 15)
         self.assertEqual(self.ledger.count("u1"), 10)
+        delivered_index=states.index("delivered")
         self.assertEqual(self.ledger.reserve(
-            "u1", "ashby:open_1", "repeat-1")["status"], "already_delivered")
+            "u1", f"ashby:open_{delivered_index}", "repeat-1")["status"], "already_delivered")
         self.assertEqual(self.ledger.count("u1"), 10)
 
     def test_expired_reservation_does_not_charge_and_ack_is_idempotent(self):
