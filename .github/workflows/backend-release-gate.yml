@@ -32,6 +32,8 @@ jobs:
           CFA_WEB_APP_URL: https://rolehint.example
           CFA_DATA_DIR: /tmp/rolehint-ci-evidence-mcp
         run: python -m pytest -q tests/test_evidence_remote_mcp.py
+      - name: Staging URL guard and HTTP preflight security regressions
+        run: python -m pytest -q tests/test_evidence_staging_preflight.py
       - name: Assert every required Evidence Inbox file is committed
         run: python scripts/verify_rolehint_evidence_release.py
       - uses: actions/upload-artifact@v4
