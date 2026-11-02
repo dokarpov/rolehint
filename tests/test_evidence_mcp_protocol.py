@@ -4,6 +4,7 @@ Uses official MCP Python SDK v2 Client/MCPServer, no network or Claude account.
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -15,6 +16,19 @@ from mcp import Client
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "integrations" / "evidence_mcp_local"))
 from server import mcp  # noqa: E402
+
+
+def tool_payload(result):
+    """SDK versions can expose JSON-serializable dicts as text or structured content."""
+    if result.structured_content is not None:
+        return result.structured_content
+    blocks = [block.text for block in result.content if getattr(block, "type", None) == "text"]
+    if len(blocks) != 1:
+        raise AssertionError(f"Expected one JSON tool response, got {len(blocks)}")
+    try:
+        return json.loads(blocks[0])
+    except (ValueError, TypeError) as error:
+        raise AssertionError(f"Tool did not return parseable JSON: {blocks[0][:150]!r}") from error
 
 
 class MCPProtocolTests(unittest.IsolatedAsyncioTestCase):
@@ -47,16 +61,16 @@ class MCPProtocolTests(unittest.IsolatedAsyncioTestCase):
                 "project": "RoleHint", "first_line": 1, "last_line": 1,
             })
             self.assertFalse(add.is_error)
-            drafted = add.structured_content
+            drafted = tool_payload(add)
             self.assertEqual(drafted["status"], "needs-review")
             candidate_id = drafted["id"]
             listed = await client.call_tool("list_evidence_drafts", {"limit": 10})
             self.assertFalse(listed.is_error)
-            self.assertIn(candidate_id, str(listed.structured_content))
+            self.assertIn(candidate_id, str(tool_payload(listed)))
             read = await client.call_tool("get_evidence_draft", {"draft_id": candidate_id})
             self.assertFalse(read.is_error)
-            self.assertEqual(read.structured_content["visibility"], "private")
-            self.assertEqual(read.structured_content["source_kind"], "local-file")
+            self.assertEqual(tool_payload(read)["visibility"], "private")
+            self.assertEqual(tool_payload(read)["source_kind"], "local-file")
             outside = await client.call_tool("propose_evidence_from_file", {
                 "relative_path": "../private.txt", "claim": "Try forbidden path",
                 "project": "RoleHint",
@@ -64,10 +78,10 @@ class MCPProtocolTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(outside.is_error)
             deleted = await client.call_tool("discard_evidence_draft", {"draft_id": candidate_id})
             self.assertFalse(deleted.is_error)
-            self.assertTrue(deleted.structured_content["deleted"])
+            self.assertTrue(tool_payload(deleted)["deleted"])
             gone = await client.call_tool("get_evidence_draft", {"draft_id": candidate_id})
             self.assertFalse(gone.is_error)
-            self.assertEqual(gone.structured_content["error"], "Draft not found")
+            self.assertEqual(tool_payload(gone)["error"], "Draft not found")
 
 
 if __name__ == "__main__":
