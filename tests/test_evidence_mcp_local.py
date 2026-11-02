@@ -66,6 +66,7 @@ class LocalEvidenceInboxTests(unittest.TestCase):
         self.assertIn("Implemented vacancy search", draft["evidence"])
         self.assertIn("readme.md#L2-L2", draft["source_ref"])
         self.assertEqual(draft["status"], "needs-review")
+        self.assertEqual(draft["source_kind"], "local-file")
 
     def test_no_access_to_parent_symlink_hidden_or_unlisted_files(self):
         (self.root / "private.txt").write_text("Very private user secret", encoding="utf-8")
@@ -74,6 +75,9 @@ class LocalEvidenceInboxTests(unittest.TestCase):
         for relative in ("../private.txt", "/etc/passwd", ".env", "link.txt"):
             with self.subTest(relative=relative), self.assertRaises(PermissionError):
                 propose_file(relative, "Read private data")
+        os.environ["ROLEHINT_ALLOWED_FOLDER"] = str(Path.home())
+        with self.assertRaises(PermissionError):
+            propose_file("Documents/file.md", "No home directory scanning")
         os.environ.pop("ROLEHINT_ALLOWED_FOLDER")
         with self.assertRaises(PermissionError):
             propose_file("readme.md", "No implicit home access")
