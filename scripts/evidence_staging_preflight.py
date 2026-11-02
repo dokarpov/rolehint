@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Safe HTTP-only preflight of a future isolated Railway RoleHint staging service.
+"""Safe read-only HTTP preflight of the dedicated RoleHint staging service.
 
-This is deliberately NOT a full release acceptance or database/SMTP test.
-It must never send data to the known production or old shared-env services.
+This is not full acceptance, a database test or a mail-delivery test.
+The Railway environment is named production, but only the explicitly named
+rolehint-staging service is allowed here; production API is always forbidden.
 """
 from __future__ import annotations
 
@@ -13,10 +14,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
-FORBIDDEN = {
-    "rolehint-api-worker-production.up.railway.app",
-    "rolehint-staging-production.up.railway.app",
-}
+FORBIDDEN = {"rolehint-api-worker-production.up.railway.app"}
+ALLOWED = {"rolehint-staging-production.up.railway.app"}
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, hdrs, newurl):
@@ -27,9 +26,8 @@ def require_safe_target(value: str) -> str:
     host=(parsed.hostname or "").lower()
     if (parsed.scheme!="https" or parsed.port not in (None,443) or parsed.username
         or parsed.password or parsed.query or parsed.fragment or parsed.path not in ("","/")
-        or host in FORBIDDEN or not host.startswith("rolehint")
-        or not host.endswith(".up.railway.app")):
-        raise ValueError("Use only the new isolated RoleHint Railway staging HTTPS domain, never production or old staging")
+        or host in FORBIDDEN or host not in ALLOWED):
+        raise ValueError("Only the verified rolehint-staging service HTTPS origin is allowed; production is forbidden")
     return "https://"+host
 
 def request(opener,base,path,*,method="GET",data=None):
