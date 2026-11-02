@@ -3,31 +3,68 @@ on:
   push:
     branches:
       - feature/value-first-onboarding-20261021
+      - feature/evidence-mcp-review-mcpb-20261102
     paths:
       - "integrations/evidence_mcp_local/**"
       - "tests/test_evidence_mcp_local.py"
+      - "tests/test_evidence_mcp_export.py"
+      - "tests/test_evidence_mcp_protocol.py"
       - ".github/workflows/evidence-mcp-local.yml"
   pull_request:
     paths:
       - "integrations/evidence_mcp_local/**"
       - "tests/test_evidence_mcp_local.py"
+      - "tests/test_evidence_mcp_export.py"
+      - "tests/test_evidence_mcp_protocol.py"
       - ".github/workflows/evidence-mcp-local.yml"
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   local-evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Python syntax and security regressions
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate offline module syntax and local privacy
         run: |
-          python -m py_compile integrations/evidence_mcp_local/inbox.py integrations/evidence_mcp_local/server.py
+          python -m compileall -q integrations/evidence_mcp_local
           python -m unittest discover -s tests -p test_evidence_mcp_local.py -v
-      - name: MCP SDK import and tool registration
+          python -m unittest discover -s tests -p test_evidence_mcp_export.py -v
+      - name: Validate manifest, configuration and no-bundled-secrets contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          folder=Path('integrations/evidence_mcp_local')
+          manifest=json.loads((folder/'manifest.json').read_text())
+          assert manifest['manifest_version']=='0.4'
+          assert manifest['server']['type']=='uv'
+          assert manifest['server']['entry_point']=='server.py'
+          assert manifest['server']['mcp_config']['env']['ROLEHINT_ALLOWED_FOLDER']=='${user_config.allowed_folder}'
+          assert manifest['user_config']['allowed_folder']['type']=='directory'
+          for file in ['.venv','node_modules','.env']:
+              assert not (folder/file).exists()
+          print('Manifest and opt-in folder picker contract PASS')
+          PY
+      - name: Install MCP SDK 2 and exercise actual protocol
         run: |
           python -m pip install -r integrations/evidence_mcp_local/requirements.txt
-          cd integrations/evidence_mcp_local
-          python -c "import server; assert server.mcp is not None"
+          python -m unittest discover -s tests -p test_evidence_mcp_protocol.py -v
+      - name: Package unsigned developer MCPB (not published)
+        working-directory: integrations/evidence_mcp_local
+        run: |
+          npx --yes @anthropic-ai/mcpb pack
+          test -n "$(find . -maxdepth 1 -name '*.mcpb' -type f -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rolehint-claude-local-mcpb-dev
+          path: integrations/evidence_mcp_local/*.mcpb
+          if-no-files-found: error
+          retention-days: 7
