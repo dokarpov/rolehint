@@ -12,21 +12,21 @@ spec=importlib.util.spec_from_file_location("evidence_staging_preflight",SCRIPT)
 preflight=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(preflight)
 
-STAGING="https://rolehint-evidence-staging.up.railway.app"
+STAGING="https://rolehint-staging-production.up.railway.app"
 
 @pytest.mark.parametrize("url",[
     "",
-    "http://rolehint-evidence-staging.up.railway.app",
+    "http://rolehint-staging-production.up.railway.app",
     "https://localhost",
     "http://127.0.0.1",
     "https://rolehint-api-worker-production.up.railway.app",
-    "https://rolehint-staging-production.up.railway.app",
+    "https://rolehint-other-production.up.railway.app",
     "https://rolehint-staging-production.up.railway.app.evil.example",
     "https://evil.example",
-    "https://rolehint-evidence-staging.up.railway.app@evil.example",
-    "https://rolehint-evidence-staging.up.railway.app/internal",
-    "https://rolehint-evidence-staging.up.railway.app?redirect=/private",
-    "https://rolehint-evidence-staging.up.railway.app:8080",
+    "https://rolehint-staging-production.up.railway.app@evil.example",
+    "https://rolehint-staging-production.up.railway.app/internal",
+    "https://rolehint-staging-production.up.railway.app?redirect=/private",
+    "https://rolehint-staging-production.up.railway.app:8080",
 ])
 def test_preflight_does_not_access_production_or_private_hosts(url):
     with pytest.raises(ValueError):
