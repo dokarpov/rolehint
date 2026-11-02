@@ -2,7 +2,7 @@
   "manifest_version": "0.4",
   "name": "rolehint-evidence-local",
   "display_name": "RoleHint Evidence Collector",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Capture selected professional work as private, unverified evidence drafts. No cloud sync or background scanning.",
   "author": {
     "name": "RoleHint"
@@ -39,6 +39,10 @@
     {
       "name": "propose_evidence_from_text",
       "description": "Save explicitly selected text as a local private draft; never verified"
+    },
+    {
+      "name": "list_allowed_project_files",
+      "description": "List only permitted text filenames in one selected project folder; no recursion or file contents"
     },
     {
       "name": "propose_evidence_from_file",
