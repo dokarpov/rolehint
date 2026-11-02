@@ -1,0 +1,79 @@
+{
+  "manifest_version": "0.4",
+  "name": "rolehint-evidence-local",
+  "display_name": "RoleHint Evidence Collector",
+  "version": "0.2.0",
+  "description": "Capture selected professional work as private, unverified evidence drafts. No cloud sync or background scanning.",
+  "author": {
+    "name": "RoleHint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dokarpov/rolehint"
+  },
+  "server": {
+    "type": "uv",
+    "entry_point": "server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}",
+        "server.py"
+      ],
+      "env": {
+        "ROLEHINT_ALLOWED_FOLDER": "${user_config.allowed_folder}"
+      }
+    }
+  },
+  "user_config": {
+    "allowed_folder": {
+      "type": "directory",
+      "title": "Allowed project folder",
+      "description": "Choose a specific folder of sanitized project files. The extension will not scan your computer or leave this folder.",
+      "required": true
+    }
+  },
+  "tools": [
+    {
+      "name": "propose_evidence_from_text",
+      "description": "Save explicitly selected text as a local private draft; never verified"
+    },
+    {
+      "name": "propose_evidence_from_file",
+      "description": "Capture a specified line range from one allowed text file"
+    },
+    {
+      "name": "list_evidence_drafts",
+      "description": "List local draft metadata"
+    },
+    {
+      "name": "get_evidence_draft",
+      "description": "Read one local evidence draft"
+    },
+    {
+      "name": "discard_evidence_draft",
+      "description": "Delete a selected local draft"
+    }
+  ],
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ],
+    "runtimes": {
+      "python": ">=3.11"
+    }
+  },
+  "keywords": [
+    "rolehint",
+    "career",
+    "evidence",
+    "local",
+    "privacy"
+  ],
+  "license": "MIT"
+}
