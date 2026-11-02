@@ -9,14 +9,14 @@ See [full connector contract](../../docs/product/EVIDENCE_CONNECTORS_MCP_V1.md).
 1. Open the successful GitHub Actions **RoleHint local evidence MCP QA** run for the feature branch and download its **rolehint-claude-local-mcpb-dev** artifact. Inspect the included bundle/source before installing. No public directory listing or signature is claimed.
 2. Claude Desktop → Settings → Desktop app → Extensions → Manage → Advanced settings → Install Extension (menu location can vary).
 3. Select the .mcpb file and choose a **specific sanitized project folder** in the install-time folder picker. Never approve your whole home, Desktop, or entire Documents folder.
-4. Ask Claude to propose a claim from a selected conversation excerpt or a particular source file and save it as a **private RoleHint draft**. Inspect the tool permissions before allowing access.
+4. Ask Claude to list filenames in the approved folder (metadata only), then propose a claim from a selected conversation excerpt or a particular source file and save it as a **private RoleHint draft**. Inspect the tool permissions before allowing access.
 5. Review candidates locally. No evidence is automatically sent to RoleHint, ChatGPT or another server.
 
 The extension uses the UV runtime to provision Python and the MCP SDK. First launch may require network access to install dependencies. This is not a signed or Anthropic-reviewed extension; installation on the user's real Mac remains unverified until separately tested.
 
 ## Option B — run locally from source
 
-Use Python 3.11+. From this integration directory, create a venv, install requirements.txt and run server.py through the virtualenv. Configure the Claude Desktop custom MCP server command to the absolute virtualenv Python path, with the absolute server.py argument and an environment variable ROLEHINT_ALLOWED_FOLDER pointing at your selected project folder. Alternatively use the official mcp CLI / MCP Inspector. manifest.json defines the same folder picker and five tools for the .mcpb route.
+Use Python 3.11+. From this integration directory, create a venv, install requirements.txt and run server.py through the virtualenv. Configure the Claude Desktop custom MCP server command to the absolute virtualenv Python path, with the absolute server.py argument and an environment variable ROLEHINT_ALLOWED_FOLDER pointing at your selected project folder. Alternatively use the official mcp CLI / MCP Inspector. manifest.json defines the same folder picker and six tools for the .mcpb route.
 
 ## Local evidence review
 
@@ -33,7 +33,7 @@ Drafts are in ~/.rolehint/evidence-inbox.sqlite3 (override with ROLEHINT_LOCAL_I
 
 ## Security boundaries
 
-- No automatic scanning of local folders, conversations or the whole computer; no network requests.
+- No automatic scanning of local folders, conversations or the whole computer; no network requests. The optional file-browse tool lists one directory at a time without opening file contents.
 - Only explicit relative file paths under the chosen folder; rejects traversal, symlinks escaping the folder, hidden files and common secret directories.
 - Only UTF-8 text extensions, at most 256 KB per file, at most 120 lines and 8,000 characters per excerpt.
 - Credential-pattern scanning is defense-in-depth, not a guarantee all secrets/confidential data are found.
