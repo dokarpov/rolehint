@@ -27,6 +27,10 @@ CREATE INDEX IF NOT EXISTS rh_oauth_refresh_user ON rh_oauth_refresh(user_id,cli
 CREATE TABLE IF NOT EXISTS rh_oauth_login_handoffs(
  ticket_hash TEXT PRIMARY KEY,request_json TEXT NOT NULL,
  created_at REAL NOT NULL,expires_at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS rh_oauth_registration_attempts(
+ id INTEGER PRIMARY KEY AUTOINCREMENT,source_hash TEXT NOT NULL,created_at REAL NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_rh_oauth_registration_attempts
+ ON rh_oauth_registration_attempts(created_at,source_hash);
 """
 SCOPES={"evidence:read","evidence:propose"}
 CLAUDE_REDIRECTS={"https://claude.ai/api/mcp/auth_callback",
@@ -40,9 +44,14 @@ def hashed(value):return hashlib.sha256(str(value).encode()).hexdigest()
 def pkce(verifier):
     return base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
 
+class OAuthRateLimit(Exception):
+    """Registration or pending OAuth request quota exceeded. Never log user input."""
+
+
 class OAuthServer:
     def __init__(self,path:str|Path,base:str,allow_loopback=False):
         self.path=str(path);self.base=base.rstrip("/");self.resource=self.base+"/mcp"
+        self._rate_salt=secrets.token_bytes(32)
         self.allow_loopback=allow_loopback
         if not self.base.startswith("https://") and not (allow_loopback and self.base.startswith("http://localhost:")):
             raise ValueError("Canonical OAuth issuer requires HTTPS")
@@ -63,19 +72,45 @@ class OAuthServer:
             if self.allow_loopback and u.scheme=="http" and u.hostname in ("localhost","127.0.0.1"):return True
             return False
         except ValueError:return False
-    def register(self,data):
+    def register(self,data,source="unidentified"):
+        if not isinstance(data,dict):
+            raise ValueError("Invalid OAuth registration request")
         uris=data.get("redirect_uris")
         if not isinstance(uris,list) or not 1<=len(uris)<=5 or any(
           not isinstance(x,str) or not self.validate_redirect(x) for x in uris):
             raise ValueError("Only approved assistant callback URLs allowed")
+        if data.get("token_endpoint_auth_method","none")!="none":
+            raise ValueError("Only public PKCE OAuth clients are supported")
+        if "grant_types" in data and not set(data["grant_types"])<={"authorization_code","refresh_token"}:
+            raise ValueError("Unsupported OAuth grant")
+        now=time.time()
         cid="rhclient_"+secrets.token_urlsafe(20)
         name=str(data.get("client_name") or "AI assistant").strip()[:90] or "AI assistant"
+        # Keep only keyed source fingerprints, never plaintext client IPs.
+        source_hash=hmac.new(self._rate_salt,str(source).encode()[:150],hashlib.sha256).hexdigest()
         with self.db() as conn:
-            conn.execute("INSERT INTO rh_oauth_clients VALUES(?,?,?,?)",
-                         (cid,name,json.dumps(uris),time.time()))
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute("DELETE FROM rh_oauth_registration_attempts WHERE created_at<?",(now-600,))
+                recent=conn.execute("SELECT COUNT(*) FROM rh_oauth_registration_attempts WHERE source_hash=?",
+                                    (source_hash,)).fetchone()[0]
+                global_recent=conn.execute("SELECT COUNT(*) FROM rh_oauth_registration_attempts").fetchone()[0]
+                if recent>=10 or global_recent>=60:
+                    raise OAuthRateLimit("OAuth client registration temporarily rate-limited")
+                count=conn.execute("SELECT COUNT(*) FROM rh_oauth_clients").fetchone()[0]
+                if count>=2000:
+                    raise OAuthRateLimit("OAuth client registration capacity exceeded")
+                conn.execute("INSERT INTO rh_oauth_registration_attempts(source_hash,created_at) VALUES(?,?)",
+                             (source_hash,now))
+                conn.execute("INSERT INTO rh_oauth_clients VALUES(?,?,?,?)",
+                             (cid,name,json.dumps(uris),now))
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
         return {"client_id":cid,"client_name":name,"redirect_uris":uris,
                 "token_endpoint_auth_method":"none","grant_types":["authorization_code","refresh_token"],
-                "response_types":["code"],"client_id_issued_at":int(time.time())}
+                "response_types":["code"],"client_id_issued_at":int(now)}
     def _validate_authorize(self,query):
         cid=query.get("client_id","");redirect=query.get("redirect_uri","")
         with self.db() as conn:
@@ -105,9 +140,18 @@ class OAuthServer:
         now=time.time()
         ticket=secrets.token_urlsafe(32)
         with self.db() as conn:
-            conn.execute("DELETE FROM rh_oauth_login_handoffs WHERE expires_at<?",(now,))
-            conn.execute("INSERT INTO rh_oauth_login_handoffs VALUES(?,?,?,?)",
-                         (hashed(ticket),serialized,now,now+900))
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute("DELETE FROM rh_oauth_login_handoffs WHERE expires_at<?",(now,))
+                active=conn.execute("SELECT COUNT(*) FROM rh_oauth_login_handoffs").fetchone()[0]
+                if active>=100:
+                    raise OAuthRateLimit("Too many pending OAuth sign-ins; try again shortly")
+                conn.execute("INSERT INTO rh_oauth_login_handoffs VALUES(?,?,?,?)",
+                             (hashed(ticket),serialized,now,now+900))
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
         return ticket
 
     def pending_login(self,ticket):
@@ -220,7 +264,14 @@ class OAuthServer:
     def revoke(self,uid,cid):
         with self.db() as conn:
             conn.execute("BEGIN IMMEDIATE")
-            conn.execute("DELETE FROM rh_oauth_access WHERE user_id=? AND client_id=?",(uid,cid))
-            conn.execute("DELETE FROM rh_oauth_refresh WHERE user_id=? AND client_id=?",(uid,cid))
-            conn.commit()
+            try:
+                # Invalidate not only issued tokens but also unredeemed codes
+                # and pending consent forms for this user and client.
+                for table in ("rh_oauth_access","rh_oauth_refresh",
+                              "rh_oauth_codes","rh_oauth_requests"):
+                    conn.execute(f"DELETE FROM {table} WHERE user_id=? AND client_id=?",(uid,cid))
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
         return {"revoked":True}
