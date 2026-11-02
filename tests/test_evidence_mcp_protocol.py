@@ -54,8 +54,14 @@ class MCPProtocolTests(unittest.IsolatedAsyncioTestCase):
             names = {tool.name for tool in schema.tools}
             self.assertEqual(names, {
                 "propose_evidence_from_text", "propose_evidence_from_file",
+                "list_allowed_project_files",
                 "list_evidence_drafts", "get_evidence_draft", "discard_evidence_draft",
             })
+            browse = await client.call_tool("list_allowed_project_files", {
+                "relative_directory": ".", "limit": 50,
+            })
+            self.assertFalse(browse.is_error)
+            self.assertIn("README.md", str(tool_payload(browse)))
             add = await client.call_tool("propose_evidence_from_file", {
                 "relative_path": "README.md", "claim": "Validated vacancy discovery",
                 "project": "RoleHint", "first_line": 1, "last_line": 1,
