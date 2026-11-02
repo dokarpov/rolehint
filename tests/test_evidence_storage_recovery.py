@@ -89,9 +89,11 @@ def test_backup_restore_preserves_user_provenance_tokens_and_fts(tmp_path):
     assert resumed_oauth.verify(token["access_token"])["user_id"]==uid
     with sqlite3.connect(snapshot) as conn:
         matching=conn.execute("""
-          SELECT e.evidence_id FROM user_evidence_fts f
-          JOIN user_evidence e ON e.evidence_id=f.evidence_id AND e.user_id=f.user_id
-          WHERE f.user_evidence_fts MATCH ? AND e.user_id=?
+          SELECT e.evidence_id FROM user_evidence_fts
+          JOIN user_evidence e
+            ON e.evidence_id=user_evidence_fts.evidence_id
+            AND e.user_id=user_evidence_fts.user_id
+          WHERE user_evidence_fts MATCH ? AND e.user_id=?
         """,("review",uid)).fetchall()
     assert len(matching)==1
 
