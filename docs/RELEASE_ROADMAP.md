@@ -95,3 +95,14 @@ Owner release decision: [BLOCKED / PRIVATE TEST / APPROVED PUBLIC]
 Cosmetic redesign, pink/purple styling variants, fictional screenshots masquerading as product, new CRM workspaces, compulsory Telegram-only positioning as if it were standalone email auth, unsupported fit scores, unverified company claims, mass cold outreach, public monetization and automatic applications.
 
 **Next executable milestone: I1 — actually complete and test a real first-user web login, session resume and isolation**, then carry that identity through I2 and I3 without creating another mock application.
+
+
+## Additive product-learning gate — 2026-11-02
+
+This is a **measurement overlay**, not a new feature milestone, change to the approved CJM, relaxation of I0–I8, or reason to delay technical/security P0 fixes. Run small **consented** private tests only when the PT privacy/auth boundaries permit.
+
+For each observed end-to-end participant session record: source/role intent and remote/B2B constraint; CV intake started/completed; elapsed time to first **actually eligible, fresh** job; number of reviewed jobs and evidence corrections; pack approved; employer form opened; user-confirmed submission; return visit or recorded outcome. A click on a job or employer form is NOT a submitted application; do not count an interview or hire unless independently confirmed. Track source reliability and denominator per cohort, and distinguish zero source results from user abandonment.
+
+Have at least three independent users attempt the **same truthful job-to-decision journey**. Document confusion, drop-offs and a short verbatim problem statement; separate repeated user-value blockers from low-priority preferences. Resolve the highest-evidence blocker through the existing release sequence, rather than expanding scope or presenting paid conversion hypotheses as proven.
+
+**Business learning:** after independent functional acceptance, test whether users would return for new eligible opportunities and which specific capability they would consider paying for. No billing promise before real value, pricing approval and PAY-01 acceptance. Never automatically submit an application, send a message, upload a CV or expose private employment data without the person's explicit approval.
