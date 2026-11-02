@@ -130,6 +130,16 @@ E04 can start behind E02; E08's ledger schema can be designed before E06, but it
 
 **Done:** repeat query after previous submission/rejection behaves safely; correct conversions and dedupe after account restart; notifications only on consent. **Covers:** K01–K10, T01–T09, U01–U09.
 
+## E10B — Evidence collection from Claude Desktop and ChatGPT (P1 parallel workstream)
+
+**Spec:** [Evidence Connectors / MCP v1](product/EVIDENCE_CONNECTORS_MCP_V1.md). Product gap verified: RoleHint has GitHub/Drive evidence import and SQLite evidence review, but no MCP/desktop local collector and the current /me/evidence identity depends on Telegram.
+
+**Implement in order:** EVC-0 opt-in local Claude Desktop MCP (only explicitly allowed Mac folders, selected text, local draft inbox); EVC-1 rolehint authenticated review/capture API with OAuth-compatible user scopes, FTS5 and deletion consistency; EVC-2 remote MCP for Claude + supported ChatGPT workspaces; EVC-3 .mcpb packaging and user-initiated ChatGPT/Claude export import; EVC-4 evidence provenance/quality UX. Do not auto-verify model-generated claims, grant access to all files or conflate chat conversations with independently verified employment evidence.
+
+**Dependencies:** EVC-0 can proceed immediately as an isolated tool; EVC-1/2 must wait for DB-0 persistence/auth, scoped credentials and cross-account separation. This is a value-adding intake source, **not** a new forced onboarding step or a reason to delay the first real vacancy.
+
+**Success:** selected document → 1–5 accurately sourced `needs-review` claims in private inbox → explicit user review → retained, deduped, searchable RoleHint evidence; deletion removes FTS and derivatives. Test local path escape, secrets, OAuth, two users and interrupted upload. No “connector live” claim until actually installed and authenticated in Claude/ChatGPT.
+
 ## E11 — Release, instrumentation and founder go/no-go
 
 **Work:** run 200-case matrix according to release scope and priority; P0 automated API/fixtures + live iPhone Safari and desktop; manual source checks for each first-ten listing; session + privacy + deletion + backup/restore + rollback. Release through immutable SHA with branch protection and owner signoff; don't merge staging just because it appears prettier.
