@@ -4,7 +4,7 @@ import html,json
 from urllib.parse import urlencode
 from fastapi import APIRouter,HTTPException,Request
 from fastapi.responses import JSONResponse,HTMLResponse,RedirectResponse
-from .evidence_oauth import OAuthServer,SCOPES
+from .evidence_oauth import OAuthServer,SCOPES,OAuthRateLimit
 
 def create_routes(server:OAuthServer,require_user,check_origin):
     r=APIRouter(tags=["evidence-oauth"])
@@ -27,7 +27,10 @@ def create_routes(server:OAuthServer,require_user,check_origin):
     async def register(request:Request):
         if int(request.headers.get("content-length","0") or "0")>4096:
             raise HTTPException(413,"Registration too large")
-        try:response=server.register(await request.json())
+        try:response=server.register(
+            await request.json(),
+            source=request.client.host if request.client is not None else "unknown")
+        except OAuthRateLimit as e:raise HTTPException(429,str(e)) from e
         except (ValueError,TypeError) as e:raise HTTPException(400,str(e)) from e
         return JSONResponse(response,status_code=201,headers={"Cache-Control":"no-store"})
 
@@ -37,6 +40,7 @@ def create_routes(server:OAuthServer,require_user,check_origin):
         except HTTPException as error:
             if error.status_code!=401:raise
             try:ticket=server.stage_for_login(dict(request.query_params))
+            except OAuthRateLimit as e:raise HTTPException(429,str(e)) from e
             except ValueError as e:raise HTTPException(400,str(e)) from e
             return RedirectResponse("/webapp/evidence.html?connect="+ticket,status_code=303,
               headers={"Cache-Control":"no-store","Referrer-Policy":"no-referrer"})
