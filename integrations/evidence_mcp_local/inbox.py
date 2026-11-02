@@ -71,13 +71,15 @@ def _clean(label: str, value: str, max_length: int) -> str:
     return result
 
 
-def propose_text(claim: str, evidence: str, source_name: str, project: str = "Unassigned") -> dict:
+def propose_text(claim: str, evidence: str, source_name: str, project: str = "Unassigned", *, source_kind: str = "selected-text") -> dict:
+    if source_kind not in {"selected-text", "local-file"}:
+        raise ValueError("Unsupported local source kind")
     claim = _clean("claim", claim, 1000)
     evidence = _clean("evidence", evidence, 8000)
     source_name = _clean("source_name", source_name, 240)
     project = _clean("project", project, 120)
     fingerprint = hashlib.sha256(
-        json.dumps([claim, evidence, source_name, project], ensure_ascii=False).encode("utf-8")
+        json.dumps([claim, evidence, source_name, project, source_kind], ensure_ascii=False).encode("utf-8")
     ).hexdigest()
     draft_id = "candidate_" + fingerprint[:24]
     with _connect() as conn:
@@ -85,7 +87,7 @@ def propose_text(claim: str, evidence: str, source_name: str, project: str = "Un
         conn.execute("""INSERT OR IGNORE INTO drafts
             (id,source_kind,source_ref,project,claim,evidence,status,visibility,captured_at,boundary)
             VALUES(?,?,?,?,?,?,'needs-review','private',?,?)""",
-            (draft_id, "selected-text", source_name, project, claim, evidence,
+            (draft_id, source_kind, source_name, project, claim, evidence,
              time.time(), "Assistant-proposed; text is not independently verified evidence."))
         created = conn.total_changes > before
     return {"id": draft_id, "created": created, "status": "needs-review",
@@ -100,6 +102,8 @@ def propose_file(relative_path: str, claim: str, project: str = "Unassigned",
     root = Path(allowed).expanduser().resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Allowed source root must be a directory")
+    if root == Path("/") or root == Path.home().resolve():
+        raise PermissionError("Allow a specific project folder, not your home or entire disk")
     rel = Path(relative_path)
     if rel.is_absolute() or not rel.parts or ".." in rel.parts or any(
         part.startswith(".") or part in FORBIDDEN_DIR_NAMES for part in rel.parts
@@ -121,7 +125,7 @@ def propose_file(relative_path: str, claim: str, project: str = "Unassigned",
     if SENSITIVE.search(excerpt):
         raise ValueError("This selection may contain credentials; redact before capture")
     source = f"local-file:{rel.as_posix()}#L{first_line}-L{min(last_line,len(lines))}"
-    result = propose_text(claim, excerpt, source, project)
+    result = propose_text(claim, excerpt, source, project, source_kind="local-file")
     return {**result, "source": source}
 
 
