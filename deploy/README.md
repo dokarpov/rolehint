@@ -8,6 +8,14 @@ service or volume was changed.** Never "solve" this by attaching an empty volume
 over the production `/app/data` or by enabling MCP in the existing production
 environment.
 
+## Verified CI and Git evidence (2026-11-02)
+
+- [Backend release gate — PASS](https://github.com/dokarpov/rolehint/actions/runs/41464792800): API/OAuth/MCP source tests, concurrent writes, SQLite FTS, backup/restore, repo inventory and existing public API smoke (the latter is **not** staging E2E).
+- [Chromium + WebKit QA — PASS](https://github.com/dokarpov/rolehint/actions/runs/41464339904): viewport fixtures including Safari-like WebKit. A physical iPhone has **not** been tested.
+- GitHub Actions uploaded the `evidence-release-inventory-{sha}` artifact with complete tracked-file inventory, individual SHA-256 hashes, and exact tested Git checkout SHA. GitHub pull request checks may test a synthetic merge commit; check the branch head and Railway deployed SHA separately before any promotion.
+- [Draft PR #13](https://github.com/dokarpov/rolehint/pull/13) is the sole cloud Evidence Inbox source; it targets the feature base, not `main`. All code changes discussed in this release gate are written via GitHub commits.
+- New staged infrastructure attempt **failed** with Railway's free-plan resource limit, so there is no successful isolated staging service, real SMTP verification or actual Claude/ChatGPT account connection to cite.
+
 ## GitHub-owned source and guardrails
 
 - Working draft: [PR #13](https://github.com/dokarpov/rolehint/pull/13), source branch
