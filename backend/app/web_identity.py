@@ -182,6 +182,18 @@ def init_routes(product):
         body=await request.json()
         email=str(body.get("email") or "").strip().lower()
         if len(email)>254 or not EMAIL_RE.fullmatch(email):raise HTTPException(422,"Enter a valid email")
+        next_page=str(body.get("next") or "")
+        if next_page not in ("","evidence"):raise HTTPException(422,"Invalid return destination")
+        connect=str(body.get("connect") or "")
+        if connect:
+            if next_page!="evidence" or not re.fullmatch(r"[A-Za-z0-9_-]{32,96}",connect):
+                raise HTTPException(422,"Invalid connector handoff")
+            if os.getenv("CFA_REMOTE_MCP_ENABLED","0")!="1":
+                raise HTTPException(503,"Hosted connector not available")
+            pending=conn.execute(
+                "SELECT 1 FROM rh_oauth_login_handoffs WHERE ticket_hash=? AND expires_at>?",
+                (token_hash(connect),time.time())).fetchone()
+            if not pending:raise HTTPException(410,"Connector request expired; reconnect the assistant")
         now=time.time()
         recent=conn.execute("SELECT COUNT(*) n FROM web_login_links WHERE email=? AND created_at>?",
                             (email,now-3600)).fetchone()["n"]
@@ -190,9 +202,8 @@ def init_routes(product):
         digest=token_hash(token)
         conn.execute("INSERT INTO web_login_links VALUES(?,?,?,?,?)",(digest,email,now+900,None,now))
         conn.commit()
-        next_page=str(body.get("next") or "")
-        if next_page not in ("","evidence"):raise HTTPException(422,"Invalid return destination")
         return_suffix="&next=evidence" if next_page=="evidence" else ""
+        if connect:return_suffix+="&connect="+connect
         try:send_email(email,base+"/web-api/callback?token="+token+return_suffix,host,sender)
         except Exception:
             conn.execute("DELETE FROM web_login_links WHERE token_hash=?",(digest,));conn.commit()
@@ -200,7 +211,7 @@ def init_routes(product):
         return {"ok":True,"message":"Check your inbox for a one-time sign-in link."}
 
     @router.get("/callback")
-    def complete_login(token:str="",next:str=""):
+    def complete_login(token:str="",next:str="",connect:str=""):
         configuration()
         now=time.time()
         digest=token_hash(token)
@@ -223,7 +234,11 @@ def init_routes(product):
         except (sqlite3.Error,ValueError):
             conn.rollback()
             raise HTTPException(400,"Invalid or expired sign-in link")
-        response=RedirectResponse("/webapp/evidence.html" if next=="evidence" else "/webapp/",status_code=303)
+        if connect and (next!="evidence" or not re.fullmatch(r"[A-Za-z0-9_-]{32,96}",connect)):
+            raise HTTPException(400,"Invalid connector return path")
+        destination=("/webapp/evidence.html?connect="+connect if next=="evidence" and connect
+                     else "/webapp/evidence.html" if next=="evidence" else "/webapp/")
+        response=RedirectResponse(destination,status_code=303)
         response.set_cookie(COOKIE,session,max_age=86400*14,secure=True,httponly=True,samesite="lax",path="/")
         response.headers["Cache-Control"]="no-store"
         return response
