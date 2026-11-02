@@ -7,6 +7,10 @@
 **Target:** smallest *complete and reliable* browser release, while preserving the backend, ATS discovery, decision policies and application history already built.  
 **Present state:** **BLOCKED** (see [dated audit](RELEASE_BASELINE_2026-10-20.md)); automated CI success is not user E2E acceptance.
 
+## Evidence connectors workstream (added 2026-11-02)
+
+The evidence system is underused without a computer and assistant integration. [Claude + ChatGPT Evidence Connectors MCP v1](product/EVIDENCE_CONNECTORS_MCP_V1.md) is now a P1 parallel track: local Claude Desktop capture first, followed by a private RoleHint evidence inbox and authenticated remote MCP for Claude and supported ChatGPT accounts. Capture must require explicit file/chat selection; AI proposals stay unverified; no hidden scanning or automatic uploads. Current /me/evidence requires Telegram identity and is **not** an MCP interface. Cross-user isolation, FTS index deletion, retention and OAuth must pass before cloud rollout. This does not authorize production deployment.
+
 ## Database integrity and SQL maturity gate (2026-10-21)
 
 The existing product is **SQLite-backed applied SQL**, not a demonstrated PostgreSQL/pgvector production installation. See [source-verified SQL data integrity plan](architecture/SQL_DATA_INTEGRITY_PLAN_2026-10-21.md) and [48 SQL release tests](architecture/SQL_DATA_INTEGRITY_TEST_MATRIX_2026-10-21.md). The PostgreSQL/pgvector/ORM stack in TECH_STACK.md is a **target** only.
