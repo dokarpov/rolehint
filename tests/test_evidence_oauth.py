@@ -44,9 +44,20 @@ def test_oauth_code_is_single_use_and_token_is_restricted(oauth):
 def test_registration_rejects_redirect_host_tricks(oauth):
     for url in ["https://evil.example/steal","https://claude.ai.evil.example/x",
         "http://claude.ai/x","https://chatgpt.com@evil.example/x",
-        "https://claude.ai/callback#fragment"]:
+        "https://claude.ai/callback#fragment","https://claude.ai/open-redirect",
+        "https://chatgpt.com/not-a-callback","https://claude.ai/api/mcp/auth_callback?next=bad"]:
         with pytest.raises(ValueError):
             oauth.register({"redirect_uris":[url]})
+
+def test_official_platform_callbacks_are_allowed(oauth):
+    callbacks=["https://claude.ai/api/mcp/auth_callback",
+               "https://claude.com/api/mcp/auth_callback",
+               "https://chatgpt.com/connector_platform_oauth_redirect",
+               "https://chatgpt.com/connector/oauth/callback_0123456789"]
+    for uri in callbacks:
+        result=oauth.register({"client_name":"AI connector","redirect_uris":[uri]})
+        assert result["redirect_uris"]==[uri]
+
 
 def test_invalid_scope_and_wrong_audience_rejected(oauth):
     cid=oauth.register({"redirect_uris":["https://claude.ai/api/mcp/auth_callback"]})["client_id"]
