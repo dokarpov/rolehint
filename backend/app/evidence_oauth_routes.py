@@ -33,11 +33,12 @@ def create_routes(server:OAuthServer,require_user,check_origin):
     @r.get("/oauth/authorize")
     def authorize(request:Request):
         try:uid=require_user(request)
-        except HTTPException:
-            return HTMLResponse("""<!doctype html><html lang=en><meta name=viewport content='width=device-width,initial-scale=1'>
-              <title>Sign in to RoleHint</title><main style='max-width:550px;margin:8vh auto;padding:20px;font:16px system-ui'>
-              <h1>Sign in to RoleHint</h1><p>Open the Evidence Inbox and sign in, then reconnect Claude or ChatGPT.</p>
-              <a href='/webapp/evidence.html'>Sign in to Evidence Inbox</a></main></html>""",status_code=401)
+        except HTTPException as error:
+            if error.status_code!=401:raise
+            try:ticket=server.stage_for_login(dict(request.query_params))
+            except ValueError as e:raise HTTPException(400,str(e)) from e
+            return RedirectResponse("/webapp/evidence.html?connect="+ticket,status_code=303,
+              headers={"Cache-Control":"no-store","Referrer-Policy":"no-referrer"})
         try:req_id,scope=server.authorize(uid,request.cookies.get("rh_session",""),dict(request.query_params))
         except ValueError as e:raise HTTPException(400,str(e)) from e
         page="""<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>
@@ -52,6 +53,16 @@ def create_routes(server:OAuthServer,require_user,check_origin):
           </form><p>Revoke access from Evidence Inbox. All candidate evidence stays private.</p></main></html>"""
         return HTMLResponse(page,headers={"Cache-Control":"no-store",
           "Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
+
+    @r.get("/oauth/authorize/continue")
+    def continue_after_email(request:Request,ticket:str):
+        # A completed RoleHint sign-in created this session. Consenting
+        # still requires a separate affirmative first-party POST.
+        uid=require_user(request)
+        try:original=server.resume_login(uid,request.cookies.get("rh_session",""),ticket)
+        except ValueError as e:raise HTTPException(400,str(e)) from e
+        return RedirectResponse("/oauth/authorize?"+urlencode(original),status_code=303,
+          headers={"Cache-Control":"no-store","Referrer-Policy":"no-referrer"})
 
     @r.post("/oauth/authorize/consent")
     async def consent(request:Request):
