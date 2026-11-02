@@ -1,106 +1,51 @@
-# RoleHint Evidence Inbox — isolated Railway staging rollout
+# RoleHint — Evidence Inbox staging release gate (existing Railway project)
 
-**Status 2026-11-02: BLOCKED by Railway plan capacity.** An actual attempt to create
-`rolehint-evidence-staging` in the user's personal Railway workspace was rejected:
-`Free plan resource provision limit exceeded. Please upgrade to provision more resources!`.
-**No new Railway project/service/volume was created. No existing production
-service or volume was changed.** Never "solve" this by attaching an empty volume
-over the production `/app/data` or by enabling MCP in the existing production
-environment.
+**Staging service:** `rolehint-staging` (`ad8e16ed-d9ec-415d-815b-2b5c75ef57e6`) in the existing RoleHint Railway project (`e48095fc-fb0f-4e59-bf34-d30418e5198f`), environment `production` (`40688d3e-9562-44c7-8431-3ce9c9687601`). Although Railway calls the shared environment *production*, this is a distinct staging **service**, code deployment and SQLite volume.
 
-## Verified CI and Git evidence (2026-11-02)
+**Production service:** `rolehint-api-worker` (`dab3aee6-c85d-4177-b7ac-16a019a09eed`). Its volume `7035a583-3c98-48db-9ce6-4fb2258ee1f6` at `/app/data` must never be mounted on staging or otherwise modified.
 
-- [Backend release gate — PASS](https://github.com/dokarpov/rolehint/actions/runs/41464792800): API/OAuth/MCP source tests, concurrent writes, SQLite FTS, backup/restore, repo inventory and existing public API smoke (the latter is **not** staging E2E).
-- [Chromium + WebKit QA — PASS](https://github.com/dokarpov/rolehint/actions/runs/41464339904): viewport fixtures including Safari-like WebKit. A physical iPhone has **not** been tested.
-- GitHub Actions uploaded the `evidence-release-inventory-{sha}` artifact with complete tracked-file inventory, individual SHA-256 hashes, and exact tested Git checkout SHA. GitHub pull request checks may test a synthetic merge commit; check the branch head and Railway deployed SHA separately before any promotion.
-- [Draft PR #13](https://github.com/dokarpov/rolehint/pull/13) is the sole cloud Evidence Inbox source; it targets the feature base, not `main`. All code changes discussed in this release gate are written via GitHub commits.
-- New staged infrastructure attempt **failed** with Railway's free-plan resource limit, so there is no successful isolated staging service, real SMTP verification or actual Claude/ChatGPT account connection to cite.
+**Staging volume:** `rolehint-staging-sqlite` (`0d78adb0-26cb-40fb-a425-dc05e594836a`) provisioned as 500 MB **inside the same Railway project** on 2026-11-02; attach only to `rolehint-staging` at `/app/data`. Do not claim the release is persistent until the mount and restart checks are observed.
 
-## GitHub-owned source and guardrails
+## Separation rules
 
-- Working draft: [PR #13](https://github.com/dokarpov/rolehint/pull/13), source branch
-  `feature/evidence-cloud-inbox-20261102` into
-  `feature/value-first-onboarding-20261021`. Production/main are not targets.
-- All source/QA/plan files are committed; CI checks content+tracking and uploads
-  `evidence-release-inventory-{sha}` with the **full immutable commit SHA** and
-  individual file hashes (not a claim of deployment).
-- `.github/workflows/backend-release-gate.yml`: backend, OAuth code→MCP tool
-  →private evidence, revocation, SQLite backup/restore, FTS and write race tests.
-- `.github/workflows/release-qa.yml`: Chromium **and** WebKit responsive browser
-  fixture journeys. WebKit approximates Safari, not a physical iPhone acceptance.
-- `.github/workflows/evidence-staging-preflight.yml`: manual HTTP verification of
-  **only a new Railway staging domain**, refusing old staging/production URLs.
+1. Reconfigure **only** `rolehint-staging`. Any staging patch must be examined with `get_staged_changes` before accepting because the parent Railway environment is also used by the production API. Never stage or set environment-wide/group variables.
+2. Pin source to exact successful GitHub CI commit from [draft PR #13](https://github.com/dokarpov/rolehint/pull/13), branch `feature/evidence-cloud-inbox-20261102`. Do not change production `main` or its source trigger. Keep the PR in draft.
+3. Set service-scoped `CFA_DATA_DIR=/app/data`, `CFA_PUBLIC_BETA_LOCK=1`, `CFA_SEED_DEMO=0`, `CFA_ALLOW_ANONYMOUS_SELFHOST=0`, `CFA_RUNTIME_MODE=selfhost`, `CFA_REMOTE_MCP_ENABLED=1`, `CFA_REMOTE_MCP_DEV=0` and `CFA_WEB_APP_URL=https://rolehint-staging-production.up.railway.app`. Never copy production Telegram, ATS, SMTP, OAuth or other secrets to staging.
+4. Use repository `backend/Dockerfile` with root context and start **API only**, no background job worker or Telegram bot: `uvicorn app.main:app --host 0.0.0.0 --port 8080`. One replica, healthcheck `/health`, existing domain target port 8080.
+5. The old staging service had **no volume**; its ephemeral testing records may be lost when the newly provisioned volume is mounted. Do not pretend its ephemeral files were backed up. New consented staging data must persist after restarts.
+6. The new volume cannot be shared with production or used as a copy of production SQLite. Maintain distinct accounts and synthetic/consented evidence only. Do not enable auto-production deployments.
+7. Use dedicated test-only SMTP credentials only after verifying the provider and domain; `CFA_SMTP_HOST`, `CFA_MAIL_FROM`, optional SMTP username/password must be stored as staging **service** variables, never in GitHub. Until then actual email link sign-in is **blocked**, even if automated email-link tests pass.
+8. A successful /health, browser fixture or unauthenticated MCP challenge is **not** sufficient for end-user launch.
 
-## Infrastructure design — after plan capacity is available
+## Ordered deployment verification
 
-1. Create a **separate private Railway project**, named
-   `rolehint-evidence-staging`, default environment `staging`, PR deploys off,
-   in the same personal workspace. Distinct project ensures environment variables
-   and internal services are not shared with RoleHint production.
-2. Create a fresh `rolehint-evidence-web` service sourced from
-   `dokarpov/rolehint`, branch `feature/evidence-cloud-inbox-20261102`, pinned
-   to an exact **successful backend+WebKit CI** SHA. Never deploy `main` or an
-   untested HEAD automatically.
-3. Use Dockerfile `backend/Dockerfile` (repository root build context), health
-   `/health`, **one replica**, no public bot or background worker. Start command:
-   `sh -c 'exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"'`.
-   Restrict repository watchers/deploy triggers to owner-approved changes.
-4. Create a **new staging-only persistent 500 MB (or plan-minimum) volume** at
-   `/app/data` *before the first test-user record is created*. Set
-   `CFA_DATA_DIR=/app/data`, then confirm data persists through restart,
-   rebuild/redeploy and actual online backup→restore into disposable storage.
-   Never copy production CVs, email addresses, SQLite DBs or secrets.
-5. Generate one HTTPS `*.up.railway.app` domain for that new service. Configure
-   `CFA_WEB_APP_URL` to this exact canonical public origin, no trailing slash.
-   Set nonsecret variables from
-   [evidence-staging.env.example](../evidence-staging.env.example).
-6. Configure **dedicated test-only SMTP** `CFA_SMTP_HOST`,
-   `CFA_SMTP_PORT`, `CFA_MAIL_FROM`, and any auth credentials required, only
-   via Railway protected environment variables. Test delivery to a synthetic
-   controlled inbox; do not log email magic links. Browser email login is not
-   operational without these settings.
-7. Set `CFA_PUBLIC_BETA_LOCK=1`, `CFA_SEED_DEMO=0`,
-   `CFA_ALLOW_ANONYMOUS_SELFHOST=0`, `CFA_REMOTE_MCP_DEV=0`, and only in
-   this staging service `CFA_REMOTE_MCP_ENABLED=1`. No Telegram
-   bot credentials, real ATS credentials, or production OAuth token copies.
-8. Deploy/pin the **exact CI tested** commit. Verify Railway lists the matching
-   Git SHA; service URL and /health alone cannot prove source parity.
-9. Run GitHub Actions **Evidence staging HTTPS preflight (read-only)** on the
-   new domain. Its HTTP success explicitly **does not** imply the release passed.
-10. With authorized staging test accounts, verify the full user sequence:
-    browser email link → original request preserved → OAuth consent → Claude
-    remote MCP → private unverified draft → RoleHint browser review → FTS
-    consistency → revoke → old access and refresh rejected. Repeat in an
-    eligible ChatGPT workspace; unsupported write access must use manual
-    capture, not fictitious auto-save.
-11. Test desktop browser, **physical iPhone Safari**, network interruption,
-    expired/replayed email links, user separation, quota/rate limiting, account
-    deletion and DB volume restart/backups. Confirm PII stays off public logs
-    and user data cannot leak between accounts.
-12. Publish a source/deployment/test evidence sheet with full Git SHA,
-    Railway service+environment+volume IDs, CI links, sanitized timestamps,
-    SMTP configured status, exact tested domains and all open issues. Owner
-    signs off before any PR promotion or production deployment.
+1. Confirm draft PR head, backend tests, WebKit/Chromium browser QA and per-file Git SHA inventory pass.
+2. Stage source, variables, start command and dedicated SQLite mount against only `rolehint-staging`. Inspect staged patch to ensure **no production service/source/volume/variable** appears.
+3. Apply the staging patch and verify actual Railway deployed SHA matches the exact pinned tested Git commit. Check the production API deployment ID remains unchanged.
+4. Check `/health`, `/webapp/evidence.html`, unauthenticated `/web-api/evidence/candidates` (must return 401), `/.well-known/oauth-protected-resource/mcp`, OAuth metadata and unauthenticated MCP (must return 401). Use the manual read-only [preflight workflow](../.github/workflows/evidence-staging-preflight.yml) targeting only `https://rolehint-staging-production.up.railway.app`.
+5. Verify new volume appears attached exclusively to staging. Test SQLite recovery against actual staging storage, including restart and online backup to a disposable test copy, **without copying production data**.
+6. Configure SMTP for a controlled test mailbox. Test real email magic link and full signed-out OAuth→email→consent→Claude/ChatGPT remote MCP→private draft→review→revoke journey; no public self-reported claims are externally verified.
+7. Test actual iPhone Safari, timeouts, disconnected network, token replay, two-user isolation, duplicate evidence and sensitive-data removal. Browser WebKit CI is an approximation, not proof of real-device acceptance.
+8. Founder approves separately before any move to production. Production remains unchanged throughout.
 
-## Release/no-go table
+## Automated evidence
 
-| Gate | Evidence required | Current |
-|---|---|---|
-| Complete Git source | Compare PR branch to base, CI per-file SHA manifest | CI automated; confirm latest SHA |
-| Backend safety | SQL/FTS backup/recovery, OAuth PKCE and MCP regression suites | Implemented in CI |
-| Browser UX | Chromium + WebKit at phone/tablet/desktop widths | Implemented in CI |
-| Isolated staging | Separate private project/env, one dedicated volume | **BLOCKED: Railway free plan resource cap** |
-| Real login | Dedicated working SMTP, email-link replay, true browser session | **NOT TESTED against Railway** |
-| Real hosted MCP | Claude and eligible ChatGPT OAuth, consent, revocation | **NOT TESTED against accounts** |
-| Real device | iPhone Safari + desktop runtime | **NOT TESTED** |
-| Recovery | Real volume backup, restore, restart, migration rollback | **NOT TESTED on Railway** |
-| Public release | Security, accessibility, no high-severity open issues, owner approval | **BLOCKED; production untouched** |
+- `.github/workflows/backend-release-gate.yml`: existing API tests, OAuth PKCE, hosted MCP, SQLite FTS, backup/restore, racing writes, crash rollback, registration rate limit and Git file inventory. Green CI is code evidence **only**.
+- `.github/workflows/release-qa.yml`: responsive Chromium and WebKit tests for the browser Evidence Inbox across mobile/tablet/desktop widths.
+- `.github/workflows/evidence-staging-preflight.yml`: explicitly limited to the existing staging service domain; always refuses the production API domain. Its "PASS" does not override the real staging volume/SMTP/E2E blockers.
+- `scripts/verify_rolehint_evidence_release.py`: every required source file tracked at the immutable Git SHA, artifact uploaded to GitHub Actions, distinguishes PR merge-test SHAs from pinned branch SHA.
+- `deploy/evidence-staging.env.example`: nonsecret staging-only configuration template.
 
-### Cost and permissions
+### Gate ledger
 
-New Railway services and persistent volumes can incur usage charges. The user's
-free resource cap currently prevents provisioning; only the user can upgrade the
-workspace plan or free resources deliberately. **Do not automatically delete
-the old staging service**, reuse or detach the production database volume, or
-upgrade billing. Once resources are available, deploy staging only and verify
-all release gates before seeking approval for production.
+| Gate | Acceptance |
+|---|---|
+| GitHub source | Full SHA, tracked file manifest and CI green |
+| Staging deployment | Railway service `rolehint-staging` runs exact pinned commit; production deployment unchanged |
+| Persistence | Staging's own volume mounted, restart + backup/restore actually validated |
+| Browser | Chromium + WebKit tests green; physical iPhone Safari still requires manual validation |
+| Authentication | Real staged email link delivery, expired links, OAuth consent and revocation |
+| Claude / ChatGPT | Real connector registration and first-party account integration tested; some ChatGPT capabilities depend on plan |
+| Release | User approval, rollback runbook and no critical open gaps |
+
+**No automatic production merge/deploy.** Hosting staging within the same Railway project is adequate as long as service identities, volumes, secrets and deployments remain separate; it is not equivalent to full isolation at the Railway environment level.
