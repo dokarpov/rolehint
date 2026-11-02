@@ -77,7 +77,7 @@ def _rpc(client,token,body,session=None):
     response=client.post("/mcp",json=body,headers=headers)
     return response
 
-def test_complete_oauth_mcp_capture_review_and_revocation():
+def test_complete_oauth_mcp_capture_review_and_revocation(monkeypatch):
     # The official MCP session manager is single-lifespan. Exercise the
     # entire unauthenticated→consent→tool→revocation journey in one TestClient.
     with TestClient(app,base_url=BASE) as client:
@@ -87,7 +87,45 @@ def test_complete_oauth_mcp_capture_review_and_revocation():
         no_token=client.post("/mcp",json=init_payload(),headers=MCP_HEADERS)
         assert no_token.status_code==401,no_token.text
         assert "WWW-Authenticate" in no_token.headers
-        _browser_user(client)
+        # An assistant may initiate connection before the browser has an account.
+        # Preserve the registered PKCE request through a real email-link login.
+        callback="https://claude.ai/api/mcp/auth_callback"
+        guest_client=client.post("/oauth/register",json={
+          "client_name":"Claude guest OAuth","redirect_uris":[callback]}).json()["client_id"]
+        challenge_verifier=secrets.token_urlsafe(48)
+        guest_query={"client_id":guest_client,"redirect_uri":callback,"response_type":"code",
+          "code_challenge_method":"S256","code_challenge":pkce(challenge_verifier),
+          "resource":BASE+"/mcp","scope":"evidence:read",
+          "state":secrets.token_urlsafe(20)}
+        redirect=client.get("/oauth/authorize",params=guest_query,follow_redirects=False)
+        assert redirect.status_code==303,redirect.text
+        ticket=parse_qs(urlsplit(redirect.headers["location"]).query)["connect"][0]
+        assert client.get("/oauth/authorize/continue",params={"ticket":ticket}).status_code==401
+        from app import web_identity
+        monkeypatch.setenv("CFA_WEB_APP_URL",BASE)
+        monkeypatch.setenv("CFA_SMTP_HOST","smtp.example")
+        monkeypatch.setenv("CFA_MAIL_FROM","ci@example.com")
+        sent=[]
+        monkeypatch.setattr(web_identity,"send_email",lambda email,url,host,sender:sent.append(url))
+        email="mcp-"+uuid.uuid4().hex+"@example.com"
+        login=client.post("/web-api/login",headers={"Origin":BASE},
+          json={"email":email,"next":"evidence","connect":ticket})
+        assert login.status_code==200,login.text
+        assert len(sent)==1
+        from_email=urlsplit(sent[0])
+        callback_response=client.get(from_email.path,
+          params={key:values[0] for key,values in parse_qs(from_email.query).items()},
+          follow_redirects=False)
+        assert callback_response.status_code==303,callback_response.text
+        assert callback_response.headers["location"]=="/webapp/evidence.html?connect="+ticket
+        continued=client.get("/oauth/authorize/continue",
+          params={"ticket":ticket},follow_redirects=False)
+        assert continued.status_code==303,continued.text
+        assert continued.headers["location"].startswith("/oauth/authorize?")
+        consent_page=client.get(continued.headers["location"])
+        assert consent_page.status_code==200 and "evidence:read" in consent_page.text
+        # A used one-time login ticket cannot trigger a second consent flow.
+        assert client.get("/oauth/authorize/continue",params={"ticket":ticket}).status_code==400
         client_id,access=_get_access(client,"evidence:read evidence:propose")
         init=_rpc(client,access,init_payload())
         assert init.status_code==200,init.text[:500]
