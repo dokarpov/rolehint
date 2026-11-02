@@ -87,6 +87,12 @@ def test_complete_oauth_mcp_capture_review_and_revocation(monkeypatch):
         no_token=client.post("/mcp",json=init_payload(),headers=MCP_HEADERS)
         assert no_token.status_code==401,no_token.text
         assert "WWW-Authenticate" in no_token.headers
+        oversized=client.post("/oauth/register",content=b" " * 4097,
+            headers={"Content-Type":"application/json"})
+        assert oversized.status_code==413,oversized.text
+        malformed=client.post("/oauth/register",content=b"{bad",
+            headers={"Content-Type":"application/json"})
+        assert malformed.status_code==400,malformed.text
         # An assistant may initiate connection before the browser has an account.
         # Preserve the registered PKCE request through a real email-link login.
         callback="https://claude.ai/api/mcp/auth_callback"
