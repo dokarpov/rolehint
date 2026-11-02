@@ -396,6 +396,10 @@ def init_routes(product):
         response.delete_cookie(COOKIE,path="/")
         return response
 
+    from .web_evidence_api import init_routes as evidence_routes
+    db_path=conn.execute("PRAGMA database_list").fetchone()["file"]
+    router.include_router(evidence_routes(db_path,require_user,check_origin))
+
     from .web_release import bind_web_release
     bind_web_release(router,product,require_user,check_origin)
     return router
