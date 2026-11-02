@@ -81,8 +81,12 @@ class OAuthServer:
             raise ValueError("Only approved assistant callback URLs allowed")
         if data.get("token_endpoint_auth_method","none")!="none":
             raise ValueError("Only public PKCE OAuth clients are supported")
-        if "grant_types" in data and not set(data["grant_types"])<={"authorization_code","refresh_token"}:
-            raise ValueError("Unsupported OAuth grant")
+        if "grant_types" in data:
+            grants=data["grant_types"]
+            if not isinstance(grants,list) or not grants or not all(
+              isinstance(grant,str) for grant in grants
+            ) or not set(grants)<={"authorization_code","refresh_token"}:
+                raise ValueError("Unsupported OAuth grant")
         now=time.time()
         cid="rhclient_"+secrets.token_urlsafe(20)
         name=str(data.get("client_name") or "AI assistant").strip()[:90] or "AI assistant"
@@ -186,10 +190,22 @@ class OAuthServer:
         cid,redirect,challenge,requested,state=self._validate_authorize(query)
         request_id=secrets.token_urlsafe(32)
         with self.db() as conn:
-            conn.execute("DELETE FROM rh_oauth_requests WHERE expires_at<?",(time.time(),))
-            conn.execute("INSERT INTO rh_oauth_requests VALUES(?,?,?,?,?,?,?,?,?,?)",
-                         (request_id,cid,uid,hashed(session_token),redirect,state,
-                          " ".join(sorted(requested)),self.resource,challenge,time.time()+600))
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                now=time.time()
+                conn.execute("DELETE FROM rh_oauth_requests WHERE expires_at<?",(now,))
+                pending=conn.execute(
+                    "SELECT COUNT(*) FROM rh_oauth_requests WHERE user_id=? AND client_id=?",
+                    (uid,cid)).fetchone()[0]
+                if pending>=25:
+                    raise OAuthRateLimit("Too many pending authorization requests")
+                conn.execute("INSERT INTO rh_oauth_requests VALUES(?,?,?,?,?,?,?,?,?,?)",
+                             (request_id,cid,uid,hashed(session_token),redirect,state,
+                              " ".join(sorted(requested)),self.resource,challenge,now+600))
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
         return request_id,sorted(requested)
     def consent(self,uid,session_token,request_id,approve):
         now=time.time()
