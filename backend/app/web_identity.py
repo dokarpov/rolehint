@@ -212,6 +212,9 @@ def init_routes(product):
 
     @router.get("/callback")
     def complete_login(token:str="",next:str="",connect:str=""):
+        if next not in ("","evidence") or (connect and (
+            next!="evidence" or not re.fullmatch(r"[A-Za-z0-9_-]{32,96}",connect))):
+            raise HTTPException(400,"Invalid sign-in return path")
         configuration()
         now=time.time()
         digest=token_hash(token)
@@ -234,8 +237,6 @@ def init_routes(product):
         except (sqlite3.Error,ValueError):
             conn.rollback()
             raise HTTPException(400,"Invalid or expired sign-in link")
-        if connect and (next!="evidence" or not re.fullmatch(r"[A-Za-z0-9_-]{32,96}",connect)):
-            raise HTTPException(400,"Invalid connector return path")
         destination=("/webapp/evidence.html?connect="+connect if next=="evidence" and connect
                      else "/webapp/evidence.html" if next=="evidence" else "/webapp/")
         response=RedirectResponse(destination,status_code=303)
