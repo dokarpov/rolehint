@@ -197,7 +197,7 @@ def init_routes(product):
         return {"ok":True,"message":"Check your inbox for a one-time sign-in link."}
 
     @router.get("/callback")
-    def complete_login(token:str=""):
+    def complete_login(token:str="",next:str=""):
         configuration()
         now=time.time()
         digest=token_hash(token)
@@ -220,7 +220,7 @@ def init_routes(product):
         except (sqlite3.Error,ValueError):
             conn.rollback()
             raise HTTPException(400,"Invalid or expired sign-in link")
-        response=RedirectResponse("/webapp/",status_code=303)
+        response=RedirectResponse("/webapp/evidence.html" if next=="evidence" else "/webapp/",status_code=303)
         response.set_cookie(COOKIE,session,max_age=86400*14,secure=True,httponly=True,samesite="lax",path="/")
         response.headers["Cache-Control"]="no-store"
         return response
