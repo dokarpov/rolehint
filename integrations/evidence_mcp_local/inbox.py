@@ -94,8 +94,7 @@ def propose_text(claim: str, evidence: str, source_name: str, project: str = "Un
             "visibility": "private", "stored": "local-only"}
 
 
-def propose_file(relative_path: str, claim: str, project: str = "Unassigned",
-                 first_line: int = 1, last_line: int = 80) -> dict:
+def _allowed_root() -> Path:
     allowed = os.getenv("ROLEHINT_ALLOWED_FOLDER")
     if not allowed:
         raise PermissionError("Set ROLEHINT_ALLOWED_FOLDER to a folder you explicitly approve")
@@ -104,14 +103,64 @@ def propose_file(relative_path: str, claim: str, project: str = "Unassigned",
         raise ValueError("Allowed source root must be a directory")
     if root == Path("/") or root == Path.home().resolve():
         raise PermissionError("Allow a specific project folder, not your home or entire disk")
-    rel = Path(relative_path)
-    if rel.is_absolute() or not rel.parts or ".." in rel.parts or any(
+    return root
+
+
+def _safe_relative_path(root: Path, relative_path: str, *, directory: bool = False) -> Path:
+    rel = Path(str(relative_path))
+    if rel.is_absolute() or ".." in rel.parts or any(
         part.startswith(".") or part in FORBIDDEN_DIR_NAMES for part in rel.parts
     ):
-        raise PermissionError("Only explicit, non-hidden relative source paths are allowed")
-    path = (root / rel).resolve(strict=True)
-    if not path.is_relative_to(root) or not path.is_file() or path.suffix.lower() not in ALLOWED_EXTENSIONS:
-        raise PermissionError("Source file is outside the allowed folder or not a supported text file")
+        raise PermissionError("Only non-hidden paths inside the selected project folder are allowed")
+    if not rel.parts and not (directory and str(relative_path) == "."):
+        raise PermissionError("Choose a specific relative path")
+    # Reject every symlink component, even if it resolves to another file
+    # inside the root: aliases can disguise secret or hidden directories.
+    candidate = root
+    for part in rel.parts:
+        candidate = candidate / part
+        if candidate.is_symlink():
+            raise PermissionError("Symbolic links are not allowed")
+    candidate = candidate.resolve(strict=True)
+    if not candidate.is_relative_to(root):
+        raise PermissionError("Source path is outside the permitted folder")
+    return candidate
+
+
+def list_allowed_files(relative_directory: str = ".", limit: int = 50) -> dict:
+    """List names of immediate children only; no recursion or file-content reads."""
+    if not 1 <= limit <= 100:
+        raise ValueError("Limit must be between 1 and 100")
+    root = _allowed_root()
+    directory = _safe_relative_path(root, relative_directory, directory=True)
+    if not directory.is_dir():
+        raise ValueError("The selected path is not a directory")
+    prefix = Path(relative_directory)
+    files = []
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            if entry.name.startswith(".") or entry.name in FORBIDDEN_DIR_NAMES or entry.is_symlink():
+                continue
+            relative_name = (prefix / entry.name).as_posix()
+            if entry.is_dir(follow_symlinks=False):
+                files.append({"relative_path": relative_name, "type": "directory"})
+            elif entry.is_file(follow_symlinks=False) and Path(entry.name).suffix.lower() in ALLOWED_EXTENSIONS:
+                size = entry.stat(follow_symlinks=False).st_size
+                if size <= 256_000:
+                    files.append({"relative_path": relative_name, "type": "text-file", "size_bytes": size})
+            if len(files) >= limit:
+                break
+    return {"directory": str(relative_directory), "entries": files, "recursive": False,
+            "contents_read": False, "stored": "local-only"}
+
+
+def propose_file(relative_path: str, claim: str, project: str = "Unassigned",
+                 first_line: int = 1, last_line: int = 80) -> dict:
+    root = _allowed_root()
+    rel = Path(relative_path)
+    path = _safe_relative_path(root, relative_path)
+    if not path.is_file() or path.suffix.lower() not in ALLOWED_EXTENSIONS:
+        raise PermissionError("Source is not a supported text file")
     if path.stat().st_size > 256_000:
         raise ValueError("File too large for the local text preview; select a smaller source")
     if not (1 <= first_line <= last_line <= first_line + 119):
