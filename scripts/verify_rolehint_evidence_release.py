@@ -35,9 +35,9 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     "scripts/verify_rolehint_evidence_release.py": ("def inventory()",),
     ".github/workflows/evidence-staging-preflight.yml": ("ROLEHINT_STAGING_URL",),
     "deploy/evidence-staging.env.example": ("CFA_REMOTE_MCP_ENABLED=1",),
-    "deploy/README.md": ("Free plan resource provision limit exceeded",),
+    "deploy/README.md": ("existing Railway project", "rolehint-staging-sqlite"),
 
-    "docs/product/EVIDENCE_WEB_RELEASE_2026-11-02.md": ("NOT deployed",),
+    "docs/product/EVIDENCE_WEB_RELEASE_2026-11-02.md": ("staging rollout in progress",),
     ".github/workflows/backend-release-gate.yml": ("test_evidence_remote_mcp.py",),
     ".github/workflows/release-qa.yml": ("node site/qa-evidence.mjs",),
 }
