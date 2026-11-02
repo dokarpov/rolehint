@@ -123,3 +123,42 @@ def test_revocation_invalidates_unredeemed_codes_and_consent_requests(oauth):
            "redirect_uri":callback,"code":code,"code_verifier":verifier,
            "resource":oauth.resource})
 
+
+
+def test_pending_consent_limit_is_atomic_and_rate_limited(oauth):
+    callback="https://claude.ai/api/mcp/auth_callback"
+    cid=oauth.register({"redirect_uris":[callback]})["client_id"]
+    verifier=secrets.token_urlsafe(48)
+    for _ in range(25):
+        request,scopes=oauth.authorize("u1","one-session",{
+            "client_id":cid,"redirect_uri":callback,"response_type":"code",
+            "code_challenge_method":"S256","code_challenge":pkce(verifier),
+            "resource":oauth.resource,"scope":"evidence:read",
+            "state":secrets.token_urlsafe(20),
+        })
+        assert request and scopes==["evidence:read"]
+    with pytest.raises(OAuthRateLimit):
+        oauth.authorize("u1","one-session",{
+            "client_id":cid,"redirect_uri":callback,"response_type":"code",
+            "code_challenge_method":"S256","code_challenge":pkce(verifier),
+            "resource":oauth.resource,"scope":"evidence:read",
+            "state":secrets.token_urlsafe(20),
+        })
+    assert oauth.revoke("u1",cid)["revoked"]
+    # Revocation clears the outstanding requests, so a deliberate new consent
+    # can still be requested by the user afterward.
+    request,scopes=oauth.authorize("u1","one-session",{
+        "client_id":cid,"redirect_uri":callback,"response_type":"code",
+        "code_challenge_method":"S256","code_challenge":pkce(verifier),
+        "resource":oauth.resource,"scope":"evidence:read",
+        "state":secrets.token_urlsafe(20),
+    })
+    assert request and scopes==["evidence:read"]
+
+
+def test_registration_rejects_malformed_grant_configuration(oauth):
+    callback="https://claude.ai/api/mcp/auth_callback"
+    for value in (None,"authorization_code",["password"],[],[None]):
+        with pytest.raises(ValueError):
+            oauth.register({"redirect_uris":[callback],"grant_types":value})
+
