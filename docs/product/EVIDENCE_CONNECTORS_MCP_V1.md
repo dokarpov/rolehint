@@ -27,6 +27,7 @@ On Mac:
 
 A local stdio MCP server, launched by Claude Desktop/Claude Code, reads only an explicit allowlisted folder. No recursive whole-disk scanning, Keychain, browser cookies, Desktop/Documents access without opt-in, silent background uploads or permission escalation. Tools:
 - `propose_evidence_from_text(claim, excerpt, source_name, project)`
+- `list_allowed_project_files(relative_directory,limit)` (explicit, one level, metadata only, no content reads)
 - `propose_evidence_from_file(relative_path, claim, project, optional line bounds)` (only allowed text files)
 - `list_evidence_drafts()`, `get_evidence_draft(id)`, `discard_evidence_draft(id)`
 
