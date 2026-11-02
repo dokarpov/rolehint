@@ -83,7 +83,7 @@ try{
     // Browser-only text file picker never sends data until explicit Save.
     await page.locator('#file').setInputFiles({
       name:'source.md',mimeType:'text/markdown',buffer:Buffer.from('A selected local project note.')});
-    assert((await page.locator('#excerpt').inputValue()).includes('selected local project note'),'file not previewed');
+    await page.waitForFunction(()=>document.querySelector('#excerpt').value.includes('selected local project note'),null,{timeout:5000});
     assert(requests.length===1,'file auto-uploaded without user submission');
     assert(!errors.length,'JS errors '+width+': '+errors.join('; '));
     console.log('PASS Evidence Inbox mobile/browser',width);
