@@ -1,5 +1,5 @@
 # RoleHint Evidence Inbox — Web-first / Claude / ChatGPT release gate
-**2026-11-02 · EVC-1/EVC-2 feature PR #13 · NOT deployed or publicly connectable.**
+**2026-11-02 · EVC-1/EVC-2 feature PR #13 · staging rollout in progress; not approved for production.**
 
 ## What has been implemented
 
@@ -21,9 +21,9 @@
 
 ## Configuration (never enable this on the current production service)
 
-- A **separate Railway staging environment and durable isolated volume** with synthetic/consented test records, not the service named staging inside the existing Railway environment `production`. Backup/restore drill required.
+- Use the existing **`rolehint-staging` service**, inside RoleHint's Railway environment named `production`, with a **dedicated staging SQLite volume**, independent source commit and service-specific variables. Never mount or modify the production API's SQLite volume. See [the staged deployment instructions](../../deploy/README.md). Backup/restore drill required.
 - `CFA_DATA_DIR` points to the isolated staging volume. Confirm `product_state.db` writable, FTS5 supported, and per-account isolation after restart.
-- `CFA_WEB_APP_URL=https://<exact-staging-origin>` (no trailing slash, canonical HTTPS, public origin trusted). Set compatible response URLs. `CFA_REMOTE_MCP_ENABLED=1` **only in staging** after the other controls pass. Leave `CFA_REMOTE_MCP_DEV=0` except localhost test runs.
+- `CFA_WEB_APP_URL=https://rolehint-staging-production.up.railway.app` (no trailing slash, canonical HTTPS, public origin trusted). Set compatible response URLs. `CFA_REMOTE_MCP_ENABLED=1` **only in staging** after the other controls pass. Leave `CFA_REMOTE_MCP_DEV=0` except localhost test runs.
 - Working email sign-in SMTP variables `CFA_SMTP_HOST` and `CFA_MAIL_FROM` (plus sender auth/port if needed), or a separately accepted browser sign-in. Do not present disabled login methods as functional.
 - Run backend+browser QA on exact SHA **and** real HTTPS user-driven sign-in/OAuth/Claude connector smoke; do not rely only on simulation/fixture tests. Rate-limit/public OAuth client registration before open beta.
 - Only after the complete real flow, account isolation, OAuth consent, revoke, deletion, mobile Safari, backups/rollback and founder review pass, consider a separate production rollout decision.
@@ -35,4 +35,4 @@
 - ChatGPT custom write MCP availability is plan/workspace-dependent; don't market “one-click save from ChatGPT” to accounts where that capability is unavailable.
 - No automatic proof verification, AI-truth scoring, confidential-work scanning, universal PDFs, ZIP export import or silent batch transfer. Existing approved visual design and CV/ATS flows must not be redesigned by this PR.
 - Some source evidence and any manually exported material can be sensitive. Add retention policy, user export and deletion cascade tests before public onboarding, with privacy/security review.
-- The current Docker/Railway staging-named service is not a verified isolated persistent production-like staging environment.
+- The separate 500 MB staging volume has been provisioned; live service attachment, deploy SHA, storage persistence, real SMTP and actual assistant integrations must still be verified. Both services share a Railway environment name, so service-scoped changes and staged patch reviews are mandatory.
