@@ -16,7 +16,7 @@ class RoleHintVerifier(TokenVerifier):
         if not account:return None
         return AccessToken(token=token,client_id=account["client_id"],
                            scopes=account["scopes"],subject=account["user_id"],
-                           expires_at=int(account["expires_at"]))
+                           expires_at=int(account["expires_at"]),resource=self.oauth.resource)
 
 def current_user(scope):
     token=get_access_token()
