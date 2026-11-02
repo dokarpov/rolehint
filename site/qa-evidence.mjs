@@ -1,10 +1,11 @@
-import {chromium} from 'playwright';
+import {chromium,webkit} from 'playwright';
 import {spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
 
 // Real browser / DOM tests using only fixture API, NOT live OAuth or ATS.
 const web=spawn('python3',['-m','http.server','8791','--directory','.'],{stdio:'ignore'});
-const browser=await chromium.launch({headless:true});
+const browserEngine=process.env.ROLEHINT_BROWSER_ENGINE==='webkit'?'webkit':'chromium';
+const browser=await (browserEngine==='webkit'?webkit:chromium).launch({headless:true});
 const assert=(condition,message)=>{if(!condition)throw Error(message)};
 try{
   await delay(700);
@@ -110,4 +111,4 @@ try{
   await browser.close();
   web.kill();
 }
-console.log('Evidence Inbox fixture browser QA complete; real account E2E still required.');
+console.log('Evidence Inbox fixture browser QA complete in '+browserEngine+'; actual iPhone Safari and real-account E2E still required.');
