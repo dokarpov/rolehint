@@ -26,7 +26,10 @@ CREATE INDEX IF NOT EXISTS rh_oauth_access_user ON rh_oauth_access(user_id,clien
 CREATE INDEX IF NOT EXISTS rh_oauth_refresh_user ON rh_oauth_refresh(user_id,client_id);
 """
 SCOPES={"evidence:read","evidence:propose"}
-REDIRECT_HOSTS={"claude.ai","chatgpt.com","chat.openai.com"}
+CLAUDE_REDIRECTS={"https://claude.ai/api/mcp/auth_callback",
+                  "https://claude.com/api/mcp/auth_callback"}
+CHATGPT_STABLE_REDIRECT="https://chatgpt.com/connector_platform_oauth_redirect"
+CHATGPT_LEGACY_CALLBACK=re.compile(r"^/connector/oauth/[A-Za-z0-9_-]{8,160}$")
 PKCE_RE=re.compile(r"^[A-Za-z0-9._~-]{43,128}$")
 CHALLENGE_RE=re.compile(r"^[A-Za-z0-9_-]{43}$")
 
@@ -51,7 +54,9 @@ class OAuthServer:
         try:
             u=urlsplit(uri)
             if not u.netloc or u.username or u.password or u.fragment:return False
-            if u.scheme=="https" and u.hostname in REDIRECT_HOSTS:return True
+            if u.scheme=="https" and not u.query and uri in CLAUDE_REDIRECTS:return True
+            if u.scheme=="https" and not u.query and uri==CHATGPT_STABLE_REDIRECT:return True
+            if u.scheme=="https" and u.hostname=="chatgpt.com" and not u.query and CHATGPT_LEGACY_CALLBACK.fullmatch(u.path):return True
             if self.allow_loopback and u.scheme=="http" and u.hostname in ("localhost","127.0.0.1"):return True
             return False
         except ValueError:return False
