@@ -1,6 +1,7 @@
 """OAuth discovery, browser consent and token endpoints for Claude/ChatGPT."""
 from __future__ import annotations
 import html,json
+from urllib.parse import urlencode
 from fastapi import APIRouter,HTTPException,Request
 from fastapi.responses import JSONResponse,HTMLResponse,RedirectResponse
 from .evidence_oauth import OAuthServer,SCOPES
