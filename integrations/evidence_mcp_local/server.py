@@ -6,7 +6,7 @@ This program never contacts RoleHint servers and never marks claims verified.
 from __future__ import annotations
 
 from mcp.server import MCPServer
-from inbox import propose_text, propose_file, list_drafts, get_draft, discard_draft
+from inbox import propose_text, propose_file, list_allowed_files, list_drafts, get_draft, discard_draft
 
 mcp = MCPServer("RoleHint Evidence Collector")
 
@@ -20,6 +20,16 @@ def propose_evidence_from_text(claim: str, selected_text: str,
     This stores locally on the user's computer, not in a cloud account.
     """
     return propose_text(claim, selected_text, source_name, project)
+
+
+@mcp.tool()
+def list_allowed_project_files(relative_directory: str = ".", limit: int = 50) -> dict:
+    """List visible filenames in ONE explicitly approved folder without reading contents.
+
+    Use only when the user requests to browse their allowed project artifacts.
+    No recursion, full-disk search, hidden files, symlink aliases or cloud sync.
+    """
+    return list_allowed_files(relative_directory, limit)
 
 
 @mcp.tool()

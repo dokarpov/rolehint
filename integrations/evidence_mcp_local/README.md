@@ -1,58 +1,51 @@
-# RoleHint Evidence Collector — local Claude Desktop developer build
+# RoleHint Evidence Collector — Claude Desktop local connector
 
-**Status: experimental code, not a published or installed extension.** The local tool is not connected to a RoleHint account or ChatGPT, and no cloud transfer occurs. Its SQLite inbox is private to the machine/user and is not encrypted end-to-end. Review before sharing any work.
+**Status: developer preview, not installed or connected to production.** This collects only selected chat text or the specific source-file lines requested from an explicitly approved project folder. Private drafts remain on your computer, unverified. No cloud sync or automatic scans.
 
-The feature is the first EVC-0 slice of [the complete connector plan](../../docs/product/EVIDENCE_CONNECTORS_MCP_V1.md). It allows Claude Desktop/Claude Code to propose *unverified* experience evidence from selected conversation text or explicit text files in a permitted folder. It never scans the computer automatically.
+See [full connector contract](../../docs/product/EVIDENCE_CONNECTORS_MCP_V1.md). EVC-1 (RoleHint account import) and EVC-2 (Claude/ChatGPT remote MCP) are separate pending releases.
 
-## What works in the source
+## Option A — install a developer .mcpb bundle
 
-- Local MCP stdio server with `propose_evidence_from_text`, `propose_evidence_from_file`, `list_evidence_drafts`, `get_evidence_draft`, `discard_evidence_draft`.
-- Strictly opt-in local folder; no automatic file/folder enumeration. Requires relative paths; denies dotfiles, traversal, outside-folder symlinks, unsupported/binary files, oversized excerpts and credential-like text.
-- SQLite draft inbox: `needs-review`, `private`, local file permissions `0600`, deduplication and explicit discard.
-- No RoleHint API requests, automatic external uploads, employee-claim verification or publication.
+1. Open the successful GitHub Actions **RoleHint local evidence MCP QA** run for the feature branch and download its **rolehint-claude-local-mcpb-dev** artifact. Inspect the included bundle/source before installing. No public directory listing or signature is claimed.
+2. Claude Desktop → Settings → Desktop app → Extensions → Manage → Advanced settings → Install Extension (menu location can vary).
+3. Select the .mcpb file and choose a **specific sanitized project folder** in the install-time folder picker. Never approve your whole home, Desktop, or entire Documents folder.
+4. Ask Claude to list filenames in the approved folder (metadata only), then propose a claim from a selected conversation excerpt or a particular source file and save it as a **private RoleHint draft**. Inspect the tool permissions before allowing access.
+5. Review candidates locally. No evidence is automatically sent to RoleHint, ChatGPT or another server.
 
-## Developer setup on Mac
+The extension uses the UV runtime to provision Python and the MCP SDK. First launch may require network access to install dependencies. This is not a signed or Anthropic-reviewed extension; installation on the user's real Mac remains unverified until separately tested.
 
-1. Clone the RoleHint repository and switch to `feature/value-first-onboarding-20261021`.
-2. Create a virtualenv and install the MCP SDK (Python 3.11+ recommended):
+## Option B — run locally from source
 
-```sh
-cd integrations/evidence_mcp_local
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-```
+Use Python 3.11+. From this integration directory, create a venv, install requirements.txt and run server.py through the virtualenv. Configure the Claude Desktop custom MCP server command to the absolute virtualenv Python path, with the absolute server.py argument and an environment variable ROLEHINT_ALLOWED_FOLDER pointing at your selected project folder. Alternatively use the official mcp CLI / MCP Inspector. manifest.json defines the same folder picker and six tools for the .mcpb route.
 
-3. Choose the exact directory that Claude is allowed to use, for example a dedicated folder of **sanitized** project artifacts. Configure `ROLEHINT_ALLOWED_FOLDER` to its absolute path. Do not use `~`, `/`, the entire home folder or a cloud-synced credential directory.
-4. Configure a local MCP stdio server in Claude Desktop's developer/local server configuration. Example *template*, replace all placeholder paths with actual absolute paths:
+## Local evidence review
 
-```json
-{
-  "mcpServers": {
-    "rolehint-evidence-local": {
-      "command": "/ABSOLUTE/PATH/rolehint/integrations/evidence_mcp_local/.venv/bin/python",
-      "args": ["/ABSOLUTE/PATH/rolehint/integrations/evidence_mcp_local/server.py"],
-      "env": {
-        "ROLEHINT_ALLOWED_FOLDER": "/ABSOLUTE/PATH/SAFE-PROJECT-ARTIFACTS"
-      }
-    }
-  }
-}
-```
+From the repository root:
 
-A custom `.mcpb` single-click extension, installation test on actual Claude Desktop and a user-facing account import are **not included** in this slice. Do not label this a production-ready installer.
+- python3 integrations/evidence_mcp_local/review.py list
+- python3 integrations/evidence_mcp_local/review.py show candidate_ID
+- python3 integrations/evidence_mcp_local/review.py export candidate_ID --to /absolute/private/candidates.json --confirm
+- python3 integrations/evidence_mcp_local/review.py discard candidate_ID --confirm
 
-## Local checks
+An explicit export writes only selected claims into a new local JSON file with restrictive 0600 permissions; it cannot overwrite a file. **It does not sync to RoleHint.** Every claim retains needs-review, private and unverified status. The export file may contain personal/secret information that automatic scanning cannot reliably detect: never commit or email it without human inspection.
 
-```sh
-python3 -m unittest discover -s tests -p test_evidence_mcp_local.py -v
-python3 -m py_compile integrations/evidence_mcp_local/inbox.py integrations/evidence_mcp_local/server.py
-```
+Drafts are in ~/.rolehint/evidence-inbox.sqlite3 (override with ROLEHINT_LOCAL_INBOX). The SQLite file is restricted to the local user, **not end-to-end encrypted**.
 
-Run the unit tests from the repository root. Use the official [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) and actual Claude Desktop to verify tool discovery and first-use permissions before user installation.
+## Security boundaries
 
-## Trust boundaries
+- No automatic scanning of local folders, conversations or the whole computer; no network requests. The optional file-browse tool lists one directory at a time without opening file contents.
+- Only explicit relative file paths under the chosen folder; rejects traversal, symlinks escaping the folder, hidden files and common secret directories.
+- Only UTF-8 text extensions, at most 256 KB per file, at most 120 lines and 8,000 characters per excerpt.
+- Credential-pattern scanning is defense-in-depth, not a guarantee all secrets/confidential data are found.
+- No generated claim becomes independently verified or recruiter-visible without a separate review process.
+- The host executes MCP tools under local OS permissions; the manifest is not an operating-system sandbox.
 
-- Even a user-authored chat snippet cannot establish independently verified skills; all candidates remain `needs-review`.
-- A model's tool call is not user approval for cloud publication. Nothing is uploaded in this slice.
-- A local draft is not yet visible in RoleHint webapp. EVC-1 will add authenticated transfer and a review inbox, then EVC-2 remote MCP for Claude/ChatGPT where permitted.
-- Treat local MCP servers as powerful programs launched on the computer. Install only your own reviewed source and inspect allowed-folder permissions.
+## Test commands
+
+From repo root:
+
+1. python3 -m unittest discover -s tests -p test_evidence_mcp_local.py -v
+2. python3 -m unittest discover -s tests -p test_evidence_mcp_export.py -v
+3. python3 -m unittest discover -s tests -p test_evidence_mcp_protocol.py -v
+
+The protocol test requires MCP SDK v2. CI also validates manifest parameters and packages an unsigned developer .mcpb artifact. A passing CI test does not prove macOS installation, ChatGPT write access, cloud import, user permissions, or real-device end-to-end quality.
