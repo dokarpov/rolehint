@@ -2,7 +2,7 @@
 import sqlite3,secrets
 from urllib.parse import urlsplit,parse_qs
 import pytest
-from app.evidence_oauth import OAuthServer,pkce
+from app.evidence_oauth import OAuthServer,pkce,OAuthRateLimit
 
 @pytest.fixture
 def oauth(tmp_path):
@@ -89,3 +89,37 @@ def test_invalid_scope_and_wrong_audience_rejected(oauth):
              "response_type":"code","code_challenge_method":"S256",
              "code_challenge":pkce(secrets.token_urlsafe(48)),
              "resource":resource,"scope":scope,"state":secrets.token_urlsafe(24)})
+
+
+def test_oauth_registration_is_bounded_per_source(oauth):
+    callback="https://claude.ai/api/mcp/auth_callback"
+    for i in range(10):
+        client=oauth.register({"redirect_uris":[callback],"client_name":"Connector"},
+                              source="synthetic-ip-one")
+        assert client["client_id"].startswith("rhclient_")
+    with pytest.raises(OAuthRateLimit):
+        oauth.register({"redirect_uris":[callback]},source="synthetic-ip-one")
+    assert oauth.register({"redirect_uris":[callback]},
+                          source="synthetic-ip-two")["client_id"].startswith("rhclient_")
+    with pytest.raises(ValueError):
+        oauth.register({"redirect_uris":[callback],
+                        "token_endpoint_auth_method":"client_secret_basic"},
+                       source="synthetic-ip-two")
+
+
+def test_revocation_invalidates_unredeemed_codes_and_consent_requests(oauth):
+    callback="https://claude.ai/api/mcp/auth_callback"
+    cid=oauth.register({"redirect_uris":[callback]})["client_id"]
+    request_id,verifier=initial(oauth,cid)
+    oauth.revoke("u1",cid)
+    with pytest.raises(ValueError):
+        oauth.consent("u1","browser-cookie",request_id,True)
+    pending,verifier=initial(oauth,cid)
+    response=oauth.consent("u1","browser-cookie",pending,True)
+    code=parse_qs(urlsplit(response).query)["code"][0]
+    assert oauth.revoke("u1",cid)["revoked"]
+    with pytest.raises(ValueError):
+        oauth.token({"grant_type":"authorization_code","client_id":cid,
+           "redirect_uri":callback,"code":code,"code_verifier":verifier,
+           "resource":oauth.resource})
+
