@@ -57,6 +57,12 @@ def run(base):
     code,_,_=request(opener,base,"/web-api/evidence/candidates",method="POST",
          data=b'{"candidates":[]}')
     check("CSRF or auth blocks anonymous writes",code in (401,403),f"HTTP {code}")
+    code,_,body=request(opener,base,"/web-api/auth-status")
+    try:auth_status=json.loads(body)
+    except ValueError:auth_status={}
+    email_configured=code==200 and auth_status.get("email_login_available") is True
+    check("email sign-in configured for actual user onboarding",
+          email_configured, f"HTTP {code}; available={email_configured}")
     code,_,body=request(opener,base,"/.well-known/oauth-protected-resource/mcp")
     try:resource=json.loads(body)
     except ValueError:resource={}
@@ -74,9 +80,9 @@ def run(base):
     check("remote MCP rejects missing token",code==401 and "Bearer" in challenge,f"HTTP {code}")
     result={"target":base,"checks":checks,
             "http_preflight_ok":all(x["ok"] for x in checks),
+            "email_login_configured":email_configured,
             "full_release_gate_passed":False,
-            "unverified":["independent Railway volume and project",
-                          "persisted data after real restart",
+            "unverified":["actual staging-volume data recovery after restart",
                           "real email delivery","actual Claude/ChatGPT account connection",
                           "real iPhone Safari"]}
     print(json.dumps(result,indent=2))
