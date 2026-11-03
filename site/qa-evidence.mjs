@@ -58,7 +58,7 @@ try{
     await page.locator('#project').waitFor();
     assert(await page.locator('.wordmark').textContent()==='rolehint','wordmark not text-only');
     assert(!(await page.locator('#gate').isVisible()),'signed-in user sees unnecessary sign-in');
-    assert(await page.locator('#connector-ready').isVisible(),'hosted connection status missing');
+    await page.locator('#connector-ready').waitFor({state:'visible',timeout:5000});
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
     assert(overflow<=2,'horizontal overflow '+width+': '+overflow);
     const unlabeled=await page.evaluate(()=>[...document.querySelectorAll('input,textarea,select')]
