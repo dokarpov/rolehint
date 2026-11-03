@@ -1,6 +1,7 @@
 import {chromium,webkit} from 'playwright';
 import {spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
+import {readFile} from 'node:fs/promises';
 
 // Real browser / DOM tests using only fixture API, NOT live OAuth or ATS.
 const web=spawn('python3',['-m','http.server','8791','--directory','.'],{stdio:'ignore'});
@@ -93,11 +94,22 @@ try{
   const guest=await browser.newPage();
   let submitCount=0;
   await guest.route('**/web-api/me',route=>route.fulfill({status:401,contentType:'application/json',body:'{"detail":"Sign in"}'}));
+  await guest.route('**/web-api/auth-status',route=>route.fulfill({
+    status:200,contentType:'application/json',body:'{"email_login_available":false}'}));
+  await guest.route('**/.well-known/oauth-protected-resource/mcp',route=>route.fulfill({
+    status:200,contentType:'application/json',
+    body:JSON.stringify({resource:'http://127.0.0.1:8791/mcp'})}));
   await guest.route('**/web-api/evidence/candidates',route=>{
     submitCount++;return route.fulfill({status:401,contentType:'application/json',body:'{"detail":"Sign in"}'});
   });
   await guest.goto('http://127.0.0.1:8791/webapp/evidence.html',{waitUntil:'domcontentloaded'});
   await guest.locator('#gate').waitFor({state:'visible'});
+  await guest.getByText('Account sign-in is not available yet.').waitFor();
+  assert(await guest.locator('#sign-in').isDisabled(),'staging unavailable login is actionable');
+  assert(await guest.locator('#email').isDisabled(),'unconfigured login email should be disabled');
+  await guest.getByText(/MCP server is online, but sign-in is not configured/).waitFor();
+  assert(!(await guest.locator('#connector-ready').isVisible()),'connector URL is offered despite no sign-in');
+
   await guest.locator('#project').fill('RoleHint');
   await guest.locator('#claim').fill('Reviewed the first-job experience');
   await guest.locator('#excerpt').fill('A user study recording consistent first-value outcomes.');
@@ -105,6 +117,26 @@ try{
   await guest.locator('#save').click();
   assert(submitCount===0,'guest attempted unsafe cloud upload');
   assert(await guest.locator('#claim').inputValue()==='Reviewed the first-job experience','guest draft lost');
+  const downloadEvent=guest.waitForEvent('download');
+  await guest.locator('#export-local').click();
+  const download=await downloadEvent;
+  const saved=JSON.parse(await readFile(await download.path(),'utf8'));
+  assert(saved.format==='rolehint-evidence-draft'&&saved.format_version===1,'local export is not portable');
+  assert(saved.visibility==='private'&&saved.status==='needs-review','download incorrectly says verified');
+  assert(saved.candidate.claim==='Reviewed the first-job experience','download omitted evidence claim');
+  assert(submitCount===0,'local draft export initiated a network save');
+  await guest.locator('#claim').fill('');
+  await guest.locator('#excerpt').fill('');
+  await guest.locator('#project').fill('');
+  await guest.locator('#source-ref').fill('');
+  await guest.locator('#file').setInputFiles({
+    name:'rolehint-private-evidence-draft.json',mimeType:'application/json',
+    buffer:Buffer.from(JSON.stringify(saved))});
+  await guest.getByText(/Local draft restored/).waitFor();
+  assert(await guest.locator('#claim').inputValue()==='Reviewed the first-job experience','local draft import lost claim');
+  assert(await guest.locator('#project').inputValue()==='RoleHint','local draft import lost project');
+  assert(submitCount===0,'imported local draft uploaded without confirmation');
+
   console.log('PASS Evidence Inbox guest privacy');
   await guest.close();
 }finally{
