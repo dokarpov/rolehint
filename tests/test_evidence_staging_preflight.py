@@ -44,6 +44,8 @@ def test_preflight_is_http_only_and_never_falsely_passes_full_release(monkeypatc
         if path=="/webapp/evidence.html":return 200,{},"<title>Evidence Inbox · rolehint</title>"
         if path=="/web-api/evidence/candidates":
             return (403 if method=="POST" else 401),{},"{}"
+        if path=="/web-api/auth-status":
+            return 200,{},json.dumps({"email_login_available":True})
         if path=="/.well-known/oauth-protected-resource/mcp":
             return 200,{},json.dumps({"resource":STAGING+"/mcp"})
         if path=="/.well-known/oauth-authorization-server":
@@ -57,8 +59,29 @@ def test_preflight_is_http_only_and_never_falsely_passes_full_release(monkeypatc
     output=capsys.readouterr().out
     assert '"http_preflight_ok": true' in output
     assert '"full_release_gate_passed": false' in output
-    assert len(calls)==7
+    assert len(calls)==8
     assert all(x[1]=="GET" for x in calls[:3])
+
+def test_preflight_blocks_when_email_login_is_unconfigured(monkeypatch,capsys):
+    def disabled(opener,base,path,method="GET",data=None):
+        if path=="/web-api/auth-status":
+            return 200,{},'{"email_login_available":false}'
+        if path=="/health":return 200,{},'{"ok":true}'
+        if path=="/webapp/evidence.html":return 200,{},"Evidence Inbox"
+        if path=="/web-api/evidence/candidates":
+            return (403 if method=="POST" else 401),{},"{}"
+        if path=="/.well-known/oauth-protected-resource/mcp":
+            return 200,{},json.dumps({"resource":STAGING+"/mcp"})
+        if path=="/.well-known/oauth-authorization-server":
+            return 200,{},json.dumps({
+                "issuer":STAGING,"authorization_response_iss_parameter_supported":True})
+        return 401,{"WWW-Authenticate":"Bearer"},'{}'
+    monkeypatch.setattr(preflight,"request",disabled)
+    assert preflight.run(STAGING)==1
+    output=capsys.readouterr().out
+    assert "FAIL email sign-in configured for actual user onboarding" in output
+    assert '"email_login_configured": false' in output
+
 
 def test_preflight_fails_when_guest_reads_private_evidence(monkeypatch,capsys):
     def leaked(opener,base,path,method="GET",data=None):
@@ -67,6 +90,8 @@ def test_preflight_fails_when_guest_reads_private_evidence(monkeypatch,capsys):
         if path=="/health":return 200,{},'{"ok":true}'
         if path=="/webapp/evidence.html":return 200,{},"Evidence Inbox"
         if path=="/web-api/evidence/candidates":return 403,{},"{}"
+        if path=="/web-api/auth-status":
+            return 200,{},json.dumps({"email_login_available":True})
         if path=="/.well-known/oauth-protected-resource/mcp":
             return 200,{},json.dumps({"resource":STAGING+"/mcp"})
         if path=="/.well-known/oauth-authorization-server":
