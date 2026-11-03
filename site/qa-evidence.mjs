@@ -20,6 +20,7 @@ try{
       const reply=(data,status=200,headers={})=>route.fulfill({
         status,contentType:'application/json',headers,body:JSON.stringify(data)});
       if(path==='/web-api/me')return reply({authenticated:true,search_profiles:[],jobs:[],preferences:{}});
+      if(path==='/web-api/auth-status')return reply({email_login_available:true});
       if(path==='/web-api/evidence/candidates'&&request.method()==='GET')
         return reply({candidates});
       if(path==='/web-api/evidence/candidates'&&request.method()==='POST'){
@@ -58,7 +59,15 @@ try{
     await page.locator('#project').waitFor();
     assert(await page.locator('.wordmark').textContent()==='rolehint','wordmark not text-only');
     assert(!(await page.locator('#gate').isVisible()),'signed-in user sees unnecessary sign-in');
-    await page.locator('#connector-ready').waitFor({state:'visible',timeout:5000});
+    await page.waitForFunction(()=>
+      !document.getElementById('connector-status').textContent.startsWith('Checking'),
+      null,{timeout:7000});
+    const connectorState=await page.evaluate(()=>({
+      status:document.getElementById('connector-status').textContent,
+      hidden:document.getElementById('connector-ready').classList.contains('hide'),
+      guestGate:!document.getElementById('gate').classList.contains('hide')
+    }));
+    assert(!connectorState.hidden,'signed-in connector fixture not ready: '+JSON.stringify(connectorState)+' errors '+errors.join('; '));
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
     assert(overflow<=2,'horizontal overflow '+width+': '+overflow);
     const unlabeled=await page.evaluate(()=>[...document.querySelectorAll('input,textarea,select')]
