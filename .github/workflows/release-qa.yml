@@ -7,7 +7,7 @@ on:
       - 'webapp/**'
       - '.github/workflows/release-qa.yml'
   push:
-    branches: [main, feature/value-first-onboarding-20261021]
+    branches: [main, feature/value-first-onboarding-20261021, feature/evidence-cloud-inbox-20261102]
     paths:
       - 'site/**'
       - 'webapp/**'
