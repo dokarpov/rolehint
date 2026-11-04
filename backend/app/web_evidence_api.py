@@ -1,7 +1,13 @@
 """Browser-only routes: signed-in account and first-party Origin for every mutation."""
+from typing import Literal
+from pydantic import BaseModel,ConfigDict
 from fastapi import APIRouter,HTTPException,Request
 from fastapi.responses import JSONResponse
 from .evidence_cloud import EvidenceCloud,CandidateBatch,ReviewInput,CandidateNotFound,Conflict
+
+class EraseInboxInput(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    confirmation:Literal["DELETE MY EVIDENCE"]
 
 def init_routes(db_path,require_user,check_origin):
     router=APIRouter(prefix="/evidence",tags=["evidence-inbox"])
@@ -31,6 +37,13 @@ def init_routes(db_path,require_user,check_origin):
         except CandidateNotFound as e:raise HTTPException(404,"Evidence draft not found") from e
         except Conflict as e:raise HTTPException(409,str(e)) from e
         except ValueError as e:raise HTTPException(422,str(e)) from e
+
+    @router.delete("/candidates")
+    def erase_all_candidates(request:Request,payload:EraseInboxInput):
+        check_origin(request);uid=require_user(request)
+        # The caller must explicitly type the exact phrase. This erases only
+        # Evidence Inbox data, never the user's account, CV, jobs or packs.
+        return private(inbox.erase_inbox(uid))
 
     @router.delete("/candidates/{candidate_id}")
     def delete(request:Request,candidate_id:str):
