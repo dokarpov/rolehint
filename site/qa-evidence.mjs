@@ -39,6 +39,16 @@ async function setup(page,authenticated,candidates=[],requests=[],options={}){
       return loggedIn?respond({authenticated:true}):respond({detail:'Please sign in'},401);
     if(path==='/web-api/evidence/candidates'&&method==='GET')
       return loggedIn?respond({candidates}):respond({detail:'Please sign in'},401);
+    if(path==='/web-api/evidence/candidates'&&method==='DELETE'){
+      assert(loggedIn,'anonymous user tried to delete saved evidence');
+      assert(request.headers().origin===base,'bulk deletion lacks Origin');
+      const payload=request.postDataJSON();
+      assert(payload.confirmation==='DELETE MY EVIDENCE','bulk deletion without exact confirmation');
+      const count=candidates.length;
+      const linked=candidates.filter(x=>x.status==='approved-self-reported').length;
+      candidates.splice(0,candidates.length);
+      return respond({deleted_candidates:count,deleted_linked_evidence:linked,scope:'evidence-inbox'});
+    }
     if(path==='/web-api/evidence/candidates'&&method==='POST'){
       assert(loggedIn,'guest attempted cloud save');
       assert(request.headers().origin===base,'missing same-origin protection');
@@ -203,6 +213,30 @@ try{
   assert(tgErrors.length===0,'Telegram fixture JS errors: '+tgErrors.join('; '));
   console.log('PASS Telegram OTP save-step fallback, wrong code and lossless sign-in',engine);
   await tg.close();
+
+  const privacy=await browser.newPage({viewport:{width:390,height:844},acceptDownloads:true});
+  const stored=[{
+    id:'eic_saved_for_deletion',project:'RoleHint',claim:'Saved, self-reported evidence',
+    source_kind:'document-selection',source_ref:'privacy-fixture.md',
+    source_excerpt:'Source-backed synthetic evidence, not a real user document.',
+    status:'approved-self-reported',boundary:'Not independently verified'
+  }];
+  const privacyErrors=await setup(privacy,true,stored,[]);
+  await privacy.goto(base+'/webapp/evidence.html',{waitUntil:'domcontentloaded'});
+  await privacy.locator('#privacy-panel').waitFor({state:'visible'});
+  assert(await privacy.locator('#erase-inbox').isDisabled(),'destructive action enabled without confirmation');
+  await privacy.locator('#privacy-panel summary').click();
+  await privacy.locator('#erase-confirmation').fill('DELETE ALL');
+  assert(await privacy.locator('#erase-inbox').isDisabled(),'incorrect deletion phrase enabled erasure');
+  await privacy.locator('#erase-confirmation').fill('DELETE MY EVIDENCE');
+  assert(await privacy.locator('#erase-inbox').isEnabled(),'correct deletion phrase did not unlock');
+  await privacy.locator('#erase-inbox').click();
+  await privacy.getByText('Deleted 1 Inbox item(s). Other account data is unchanged.').waitFor();
+  assert(stored.length===0,'approved inbox items persisted after confirmed delete');
+  assert(await privacy.locator('#erase-inbox').isDisabled(),'destructive button not reset');
+  assert(privacyErrors.length===0,'privacy erasure JS errors: '+privacyErrors.join('; '));
+  console.log('PASS explicit-confirmation privacy deletion',engine);
+  await privacy.close();
 
   // A temporary outage does not mean the authenticated user was logged out.
   // Keep all unsaved evidence and let the user retry the session check.
