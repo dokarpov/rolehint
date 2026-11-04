@@ -95,8 +95,10 @@ try{
     await page.locator('#save').click();
     await page.getByText('Saved privately. Review the new claim.').waitFor();
     assert(requests.length===1,'source was not saved once');
-    assert(await page.locator('#claim-step').isHidden(),'claim step did not reset after save');
-    assert(await page.locator('#source-editor').isVisible(),'source did not reset after save');
+    assert(await page.locator('#claim-step').isHidden(),'claim step did not close after save');
+    assert(!(await page.locator('#source-step').isVisible()),'source form reappeared during review');
+    assert(await page.locator('#new-source').isVisible(),'new source action is missing from review state');
+    assert(await page.locator('#progress-review').getAttribute('aria-current')==='step','review is not the active progress step');
     assert((await page.locator('.card').count())===1,'review inbox missing saved candidate');
     await page.locator('.card details summary').click();
     assert((await page.locator('.card .excerpt').innerText()).includes('A source log describes'),'source excerpt not available on request');
@@ -105,6 +107,8 @@ try{
     await page.locator('.card details summary').click();
     await page.getByRole('button',{name:'Delete evidence'}).click();
     await page.getByText(/No saved evidence yet/).waitFor();
+    await page.locator('#new-source').click();
+    await page.locator('#source-step').waitFor({state:'visible'});
     await page.locator('#file').setInputFiles({
       name:'notes.md',mimeType:'text/markdown',buffer:Buffer.from('A new selected local source note.')
     });
