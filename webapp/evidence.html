@@ -175,6 +175,18 @@ input,select{min-height:45px}.source-text{min-height:158px}
       </div>
     </div>
   </details>
+  <details class="connections hide" id="privacy-panel">
+    <summary>Privacy and deletion</summary>
+    <div class="connection-body">
+      <p>Remove every Evidence Inbox draft, its review history and linked searchable evidence. This does not delete your account, CV, saved jobs, application packages, or files you've downloaded.</p>
+      <div class="field">
+        <label for="erase-confirmation">To delete your Inbox, type DELETE MY EVIDENCE</label>
+        <input id="erase-confirmation" autocomplete="off" spellcheck="false" placeholder="DELETE MY EVIDENCE">
+      </div>
+      <button id="erase-inbox" class="btn secondary" type="button" disabled>Delete Inbox evidence</button>
+      <p id="privacy-status" class="status" role="status" aria-live="polite"></p>
+    </div>
+  </details>
 </main>
 <footer class="shell footer">rolehint · Your evidence stays private until you choose otherwise.</footer>
 <script>
@@ -237,6 +249,7 @@ function updateActions() {
   const ready=state.authenticated;
   $('review-section').classList.toggle('hide',!ready);
   $('connections-panel').classList.toggle('hide',!ready);
+  $('privacy-panel').classList.toggle('hide',!ready);
   $('gate').classList.toggle('hide',ready);
   const loginReady=(state.emailAvailable||state.telegramAvailable)&&!state.sessionUnavailable;
   $('login-controls').classList.toggle('hide',!loginReady);
@@ -532,6 +545,28 @@ async function connectors(){
 }
 $('connections-panel').addEventListener('toggle',()=>{
   if($('connections-panel').open && state.authenticated)connectors();
+});
+$('erase-confirmation').addEventListener('input',()=>{
+  $('erase-inbox').disabled=!state.authenticated||
+    $('erase-confirmation').value!=='DELETE MY EVIDENCE';
+});
+$('erase-inbox').addEventListener('click',async()=>{
+  if(!state.authenticated||$('erase-confirmation').value!=='DELETE MY EVIDENCE')return;
+  if(!confirm('Delete every Evidence Inbox draft, its review history and linked evidence? This cannot be undone.'))return;
+  $('erase-inbox').disabled=true;
+  notice('privacy-status','Deleting Inbox data...');
+  try{
+    const result=await api('/web-api/evidence/candidates',{
+      method:'DELETE',body:JSON.stringify({confirmation:'DELETE MY EVIDENCE'})});
+    $('erase-confirmation').value='';
+    await refresh();
+    notice('privacy-status','Deleted '+result.deleted_candidates+' Inbox item(s). Other account data is unchanged.');
+  }catch(error){
+    notice('privacy-status','Deletion could not be confirmed. '+error.message,true);
+  }finally{
+    // User must type the phrase again for every destructive request.
+    $('erase-inbox').disabled=true;
+  }
 });
 $('copy-url').addEventListener('click',async()=>{
   try{await navigator.clipboard.writeText($('mcp-url').textContent);$('copy-url').textContent='Copied'}
