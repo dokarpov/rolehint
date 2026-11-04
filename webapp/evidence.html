@@ -122,8 +122,26 @@ input,select{min-height:45px}.source-text{min-height:158px}
         <h3 id="gate-title">Save to your RoleHint account</h3>
         <p id="gate-description">Sign in to keep evidence accessible on your devices.</p>
         <div id="login-controls">
-          <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
-          <button id="sign-in" class="btn secondary" type="button">Email sign-in link</button>
+          <div id="telegram-controls" class="hide">
+            <button id="telegram-begin" class="btn secondary" type="button">Continue with Telegram</button>
+            <div id="telegram-code-zone" class="hide">
+              <p class="help">Open the RoleHint bot and enter the 8-digit code it sends you.</p>
+              <a id="telegram-open" class="btn secondary" target="_blank" rel="noopener noreferrer" href="/webapp/">Open Telegram bot</a>
+              <form id="telegram-complete">
+                <div class="field">
+                  <label for="telegram-code">Verification code</label>
+                  <input id="telegram-code" type="text" inputmode="numeric" autocomplete="one-time-code"
+                    maxlength="8" pattern="[0-9]{8}" required placeholder="8-digit code">
+                </div>
+                <button class="btn" type="submit" id="telegram-verify">Verify and continue</button>
+              </form>
+            </div>
+          </div>
+          <details id="email-option" class="optional hide">
+            <summary>Sign in with email</summary>
+            <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
+            <button id="sign-in" class="btn secondary" type="button">Email sign-in link</button>
+          </details>
         </div>
         <div class="row hide" id="session-retry-controls">
           <button id="retry-session" class="btn secondary" type="button">Retry account check</button>
@@ -163,7 +181,7 @@ input,select{min-height:45px}.source-text{min-height:158px}
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const state = {authenticated:false,emailAvailable:false,sessionUnavailable:false,phase:'source',loading:false};
+const state = {authenticated:false,emailAvailable:false,telegramAvailable:false,sessionUnavailable:false,phase:'source',loading:false};
 const ticketCandidate = new URLSearchParams(location.search).get('connect') || '';
 const oauthTicket = /^[A-Za-z0-9_-]{32,96}$/.test(ticketCandidate) ? ticketCandidate : '';
 
@@ -220,29 +238,37 @@ function updateActions() {
   $('review-section').classList.toggle('hide',!ready);
   $('connections-panel').classList.toggle('hide',!ready);
   $('gate').classList.toggle('hide',ready);
-  $('login-controls').classList.toggle('hide',!state.emailAvailable||state.sessionUnavailable);
+  const loginReady=(state.emailAvailable||state.telegramAvailable)&&!state.sessionUnavailable;
+  $('login-controls').classList.toggle('hide',!loginReady);
+  $('telegram-controls').classList.toggle('hide',!state.telegramAvailable||state.sessionUnavailable);
+  $('telegram-begin').disabled=!state.telegramAvailable||state.sessionUnavailable;
+  $('email-option').classList.toggle('hide',!state.emailAvailable||state.sessionUnavailable);
+  if(state.emailAvailable&&!state.telegramAvailable)$('email-option').open=true;
   $('session-retry-controls').classList.toggle('hide',!state.sessionUnavailable);
   $('email').disabled=!state.emailAvailable||state.sessionUnavailable;
   $('sign-in').disabled=!state.emailAvailable||state.sessionUnavailable;
-  $('save').classList.toggle('hide',!ready&&(!state.emailAvailable||state.sessionUnavailable));
-  $('export-local').classList.toggle('secondary',ready||(state.emailAvailable&&!state.sessionUnavailable));
+  $('save').classList.toggle('hide',!ready&&!loginReady);
+  $('export-local').classList.toggle('secondary',ready||loginReady);
   $('save').textContent=ready?'Save for review':'Sign in to save';
   $('export-local').textContent=ready?'Download copy':'Download private draft';
   $('action-help').textContent=ready?
     'Private and unverified until you review it.':
     'Download stays on this device. Nothing is uploaded.';
   $('gate-title').textContent=state.sessionUnavailable?'Connection interrupted':
-    state.emailAvailable?'Sign in to save online':'Online saving is unavailable here';
+    loginReady?'Sign in to save online':'Online saving is unavailable here';
   $('gate-description').textContent=state.sessionUnavailable?
     'We cannot check your account. Your draft is still here. Retry the connection or download a private copy.':
-    state.emailAvailable?'You can also download a private draft without signing in.':
-    'Email login is not configured in this testing environment. You can still download your draft.';
+    loginReady?'Your source is ready. Sign in when you want to save it to your account.':
+    'Sign-in is not configured in this testing environment. You can still download your draft.';
 }
 async function authenticate() {
   if(state.loading)return;
   state.sessionUnavailable=false;
-  try{const available=await api('/web-api/auth-status');state.emailAvailable=available.email_login_available===true}
-  catch{state.emailAvailable=false}
+  try{
+    const available=await api('/web-api/auth-status');
+    state.emailAvailable=available.email_login_available===true;
+    state.telegramAvailable=available.telegram_login_available===true;
+  }catch{state.emailAvailable=false;state.telegramAvailable=false}
   try{
     await api('/web-api/me');
     state.authenticated=true;
@@ -318,9 +344,10 @@ $('capture').addEventListener('submit',async event=>{
   if(!state.authenticated){
     notice('capture-status',state.sessionUnavailable?
       'Cannot verify your account. Retry the connection or download your draft.':
-      state.emailAvailable?'Sign in to save online, or download a private draft.':
+      state.telegramAvailable||state.emailAvailable?'Sign in to save online, or download a private draft.':
       'Online saving is not available. Download your private draft instead.',true);
-    if(state.emailAvailable&&!state.sessionUnavailable)$('email').focus();
+    if(state.telegramAvailable&&!state.sessionUnavailable)$('telegram-begin').focus();
+    else if(state.emailAvailable&&!state.sessionUnavailable)$('email').focus();
     return;
   }
   if(!$('capture').reportValidity())return;
@@ -356,6 +383,34 @@ $('export-local').addEventListener('click',()=>{
 $('retry-session').addEventListener('click',async()=>{
   $('retry-session').disabled=true;
   try{await authenticate()}finally{$('retry-session').disabled=false}
+});
+$('telegram-begin').addEventListener('click',async()=>{
+  if(!state.telegramAvailable){notice('gate-status','Telegram sign-in is not configured.',true);return}
+  $('telegram-begin').disabled=true;
+  notice('gate-status','Preparing Telegram sign-in...');
+  try{
+    const result=await api('/web-api/telegram/begin',{method:'POST',body:'{}'});
+    if(!/^https:\/\/t\.me\/[A-Za-z0-9_]+\?start=web_[A-Za-z0-9_-]+$/.test(result.url||''))
+      throw Error('Invalid Telegram sign-in URL');
+    $('telegram-open').href=result.url;
+    $('telegram-code-zone').classList.remove('hide');
+    notice('gate-status','Open the bot, then enter the 8-digit code from its chat.');
+  }catch(error){notice('gate-status',error.message,true)}
+  finally{$('telegram-begin').disabled=false}
+});
+$('telegram-complete').addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(!$('telegram-code').reportValidity())return;
+  $('telegram-verify').disabled=true;
+  notice('gate-status','Verifying code...');
+  try{
+    await api('/web-api/telegram/complete',{method:'POST',body:JSON.stringify({
+      code:$('telegram-code').value.trim()})});
+    $('telegram-code').value='';
+    notice('gate-status','Signed in. Restoring your private workspace...');
+    await authenticate();
+  }catch(error){notice('gate-status',error.message,true)}
+  finally{$('telegram-verify').disabled=false}
 });
 $('sign-in').addEventListener('click',async()=>{
   if(!state.emailAvailable){notice('gate-status','Email sign-in is unavailable here.',true);return}
