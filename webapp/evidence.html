@@ -1,47 +1,466 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#ffffff"><title>Evidence Inbox · rolehint</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#ffffff">
+<title>Evidence Inbox · rolehint</title>
 <style>
-:root{font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#151515;background:#fff;--border:#dedede;--muted:#646464}*{box-sizing:border-box}body{margin:0;background:#fff;color:#151515}button,input,textarea,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.6;cursor:wait}a{color:inherit}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #444;outline-offset:2px}.shell{width:min(1100px,calc(100% - 32px));margin:auto}.top{border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:72px}.wordmark{font-size:28px;font-weight:850;letter-spacing:-.075em;text-decoration:none}.links{display:flex;gap:20px}.links a{color:#666;font-size:13px;text-decoration:none}.links a[aria-current]{color:#111;font-weight:700}.intro{padding:46px 0 30px}.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#777;margin:0 0 11px}h1{font-weight:760;font-size:clamp(40px,8vw,74px);line-height:1.04;letter-spacing:-.075em;margin:0 0 17px}h2{font-size:clamp(24px,3.5vw,32px);letter-spacing:-.05em;line-height:1.16;margin:0 0 12px}h3{font-size:18px;letter-spacing:-.03em;margin:0 0 8px}.lead{font-size:17px;max-width:720px;color:#666;line-height:1.6}.muted{color:var(--muted)}.small{font-size:13px}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.04fr);gap:34px;border-top:1px solid var(--border);padding:30px 0 60px}.panel{min-width:0}.panel+.panel{padding-left:30px;border-left:1px solid var(--border)}.field{display:grid;gap:7px;margin:16px 0}.field label{font-size:13px;font-weight:650}input,textarea,select{width:100%;min-width:0;border:1px solid #aaa;border-radius:6px;padding:11px 12px;background:#fff;color:#111}input,select{min-height:46px}textarea{resize:vertical;min-height:100px;line-height:1.5}.source-text{min-height:145px}.help{font-size:12px;color:#777}.btn{display:inline-flex;min-height:45px;align-items:center;justify-content:center;gap:8px;padding:10px 16px;color:#fff;background:#171717;border:1px solid #171717;border-radius:6px;font-weight:680;text-decoration:none;font-size:14px}.btn:hover:not(:disabled){background:#333;color:#fff}.btn.secondary{color:#111;background:#fff;border-color:#bbb}.btn.secondary:hover:not(:disabled){color:#111;background:#f2f2f2}.btn.quiet{border:0;color:#444;background:transparent;padding:6px 10px}.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.status{font-size:13px;color:#333;min-height:22px;margin:11px 0;overflow-wrap:anywhere}.status.error{color:#a61919}.status.ok{color:#166534}.card{border:1px solid var(--border);padding:17px;border-radius:8px;margin:12px 0}.cardhead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.pill{font-size:11px;border:1px solid #bbb;border-radius:100px;white-space:nowrap;padding:3px 9px}.pill.approved{color:#14532d;background:#f5faf6;border-color:#bbd0c0}.pill.rejected{color:#666;background:#f4f4f4}.claim{font-size:15px;font-weight:700;overflow-wrap:anywhere;margin:10px 0}.source{font-size:12px;color:#666;overflow-wrap:anywhere}.excerpt{white-space:pre-wrap;overflow-wrap:anywhere;color:#444;border-left:2px solid #aaa;padding:8px 12px;max-height:200px;overflow:auto;font-size:13px}.review{border-top:1px solid var(--border);margin-top:14px;padding-top:12px}.review summary{cursor:pointer;font-size:14px;font-weight:650}.toolbar{display:flex;gap:12px;justify-content:space-between;align-items:center;margin:19px 0}.toolbar select{max-width:190px}.empty{border:1px dashed #ccc;padding:25px;border-radius:7px;color:#666;font-size:14px}.gate{max-width:620px;border:1px solid var(--border);border-radius:8px;padding:25px;margin:5px 0 30px}.connector{border-top:1px solid var(--border);margin-top:28px;padding-top:20px}.connector p{font-size:13px;color:#666}.connector code{overflow-wrap:anywhere;font-size:12px}.hide{display:none!important}.footer{border-top:1px solid var(--border);padding:20px 0 35px;font-size:12px;color:#666}@media(max-width:760px){.intro{padding:32px 0 21px}.top{min-height:64px}.grid{display:flex;flex-direction:column;gap:29px}.panel+.panel{border:0;border-top:1px solid var(--border);padding:28px 0 0}.shell{width:min(1100px,calc(100% - 28px))}.links{gap:12px}.links a{font-size:12px}.btn{min-height:46px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-</style></head><body>
-<header class="shell top"><a class="wordmark" href="/webapp/">rolehint</a><nav class="links" aria-label="Workspace"><a href="/webapp/">Find jobs</a><a href="/webapp/evidence.html" aria-current="page">Evidence</a></nav></header>
-<main class="shell"><section class="intro"><p class="eyebrow">Your private evidence workspace</p><h1>Make your work<br>count.</h1><p class="lead">Collect proof from a document, project or AI conversation. Review exactly what it supports before using it in an application.</p><p class="small muted">Private by default · No claim is independently verified by an AI assistant.</p></section>
-<section id="gate" class="gate hide"><h2>Sign in to save and review.</h2><p class="muted">You can prepare text before signing in; nothing is uploaded until you choose Save.</p><div class="field"><label for="email">Email for a one-time sign-in link</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div><div class="row"><button id="sign-in" class="btn" type="button">Email sign-in link</button><a class="btn secondary" id="other-sign-in" href="/webapp/">Other sign-in options</a></div><p id="gate-status" class="status" role="status" aria-live="polite"></p></section>
-<div class="grid"><section class="panel"><p class="eyebrow">01 / Capture</p><h2>Save a selected passage</h2><p class="small muted">Paste from ChatGPT or Claude, or select a text file. The file stays on your device until you submit the chosen excerpt.</p>
-<form id="capture"><div class="field"><label for="project">Project</label><input id="project" required maxlength="120" placeholder="e.g. RoleHint"></div><div class="field"><label for="claim">What did you do?</label><textarea id="claim" minlength="5" maxlength="600" required placeholder="e.g. Built and tested the vacancy review flow"></textarea></div><div class="field"><label for="excerpt">Supporting source excerpt</label><textarea class="source-text" id="excerpt" minlength="8" maxlength="8000" required placeholder="Paste the original words or selected evidence. Don't paste passwords, personal customer details or confidential work."></textarea></div><div class="field"><label for="source-kind">Source type</label><select id="source-kind"><option value="conversation-selection">Selected AI conversation</option><option value="document-selection">Selected document</option><option value="local-file">File selected by you</option><option value="conversation-export">Conversation export excerpt</option><option value="github">GitHub</option><option value="google-drive">Google Drive</option><option value="other-selected-source">Other selected source</option></select></div><div class="field"><label for="source-ref">Source name or reference</label><input id="source-ref" maxlength="350" required placeholder="e.g. README.md · 20 Oct"></div><div class="field"><label for="file">Or preview a text file locally</label><input id="file" type="file" accept=".txt,.md,.json,.csv,text/plain,application/json"><span class="help">TXT, MD, JSON, CSV · 1 MB maximum. Only the passage in the text field is submitted.</span></div><div class="field"><label for="boundary">What does it NOT prove?</label><textarea id="boundary" maxlength="1000" placeholder="e.g. The feature was tested, but paid adoption is not verified."></textarea></div><div class="row"><button class="btn" id="save" type="submit">Save privately</button><button class="btn secondary" id="export-local" type="button">Download local draft</button></div><p class="help">The local draft stays on your device until you import or share it. It may contain sensitive information—keep the file private.</p><p id="capture-status" class="status" role="status" aria-live="polite"></p></form>
-<div class="connector"><p class="eyebrow">Connect Claude or ChatGPT</p><div id="connector-status" class="small muted">Checking available connection options…</div><div id="connector-ready" class="hide"><p>Hosted connector address. Add it to Claude's custom connectors or ChatGPT Plugins; approve only the permissions you need.</p><div class="row"><code id="mcp-url"></code><button class="btn secondary" id="copy-url" type="button">Copy address</button></div><div id="connections"></div></div></div>
-</section><section class="panel"><p class="eyebrow">02 / Review</p><h2>Evidence Inbox</h2><p class="small muted">Check the source, correct the claim and approve only truthful, self-reported evidence.</p><div class="toolbar"><label class="small" for="filter">View <select id="filter"><option value="">All</option><option value="needs-review">Needs review</option><option value="approved-self-reported">Reviewed</option><option value="rejected">Rejected</option></select></label><span id="count" class="small muted"></span></div><p id="list-status" class="status" role="status" aria-live="polite"></p><div id="candidates"><div class="empty">Sign in to review evidence. Nothing is uploaded automatically.</div></div></section></div>
-</main><footer class="shell footer">rolehint · Only you can approve your professional evidence.</footer>
+:root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5;font-size:16px;color:#171717;background:#fff;--line:#dedede;--quiet:#5d5d5d}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:#171717;background:#fff}
+button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}a{color:inherit}
+:is(button,input,select,textarea,summary,a):focus-visible{outline:2px solid #171717;outline-offset:3px}
+.hide{display:none!important}.shell{width:min(100% - 32px,840px);margin:0 auto}
+.top{height:64px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.wordmark{font-weight:840;font-size:26px;letter-spacing:-.075em;text-decoration:none}
+.links{display:flex;gap:22px}.links a{font-size:13px;color:var(--quiet);text-decoration:none}.links a[aria-current]{font-weight:700;color:#171717}
+.intro{padding:34px 0 23px}.eyebrow{margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:740;color:var(--quiet)}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.08;letter-spacing:-.065em;font-weight:760;margin:0 0 12px}
+h2{font-size:clamp(23px,3.6vw,30px);line-height:1.2;letter-spacing:-.045em;margin:0 0 8px}
+h3{font-size:17px;letter-spacing:-.025em;margin:0 0 8px}
+p{margin:0 0 14px}.lead{font-size:15px;color:var(--quiet);max-width:590px}
+.small{font-size:13px}.muted{color:var(--quiet)}.help{font-size:12px;color:var(--quiet)}
+.progress{display:flex;gap:16px;padding:11px 0 17px;border-bottom:1px solid var(--line);font-size:12px;color:#888;flex-wrap:wrap}
+.progress span{display:inline-flex;align-items:center;gap:7px}.progress b{font-size:11px;display:inline-grid;place-items:center;width:21px;height:21px;border:1px solid #bbb;border-radius:50%;font-weight:650}
+.progress span[aria-current=step]{color:#171717;font-weight:700}.progress span[aria-current=step] b{background:#171717;color:#fff;border-color:#171717}
+.step{padding:29px 0 31px;border-bottom:1px solid var(--line)}.step-heading{margin-bottom:19px}.step-heading p{color:var(--quiet);font-size:14px;margin:6px 0 0}
+.field{display:grid;gap:7px;margin:17px 0}.field label{font-size:13px;font-weight:650}
+textarea,input,select{color:#171717;background:#fff;border:1px solid #b5b5b5;border-radius:6px;padding:12px;min-width:0;width:100%}
+textarea{resize:vertical;min-height:90px;line-height:1.55}textarea:focus,input:focus,select:focus{border-color:#171717}
+input,select{min-height:45px}.source-text{min-height:158px}
+.file-row{display:flex;align-items:center;gap:13px;flex-wrap:wrap}.file-row input{width:auto;max-width:100%;font-size:13px;min-height:unset;padding:9px}
+.btn{min-height:45px;display:inline-flex;align-items:center;justify-content:center;padding:11px 18px;border-radius:6px;border:1px solid #171717;background:#171717;color:#fff;font-weight:700;font-size:14px;text-decoration:none}
+.btn:hover:not(:disabled){background:#343434}.btn.secondary{background:#fff;color:#171717;border-color:#aaa}.btn.secondary:hover:not(:disabled){background:#f4f4f4}
+.btn.quiet{background:none;color:#444;border:none;padding:9px 4px;min-height:40px}.row{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.source-preview{border:1px solid var(--line);border-radius:7px;padding:15px 17px;display:flex;gap:18px;align-items:center;justify-content:space-between}
+.source-preview p{font-size:13px;color:var(--quiet);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:540px;margin:0}
+.optional{margin:21px 0 14px;border-top:1px solid var(--line);padding-top:16px}.optional summary,.connections summary{cursor:pointer;font-size:14px;font-weight:700;list-style-position:outside}
+.optional-body{padding:5px 0 0}.optional .field{margin:14px 0}
+.gate{border:1px solid #c9c9c9;border-radius:7px;padding:15px 17px;margin:18px 0}.gate p{font-size:13px;color:var(--quiet);margin:5px 0 0}
+.gate h3{font-size:15px;margin:0}.gate .field{margin:12px 0}
+.gate .row{margin-top:12px}
+.actions{margin-top:20px}.action-help{margin-top:10px;max-width:500px}
+.status{font-size:13px;color:var(--quiet);min-height:18px;margin-top:9px;overflow-wrap:anywhere}.status.error{color:#aa2828}.status.ok{color:#186336}
+.review-section{padding:28px 0 24px;border-bottom:1px solid var(--line)}
+.review-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}.review-head p{font-size:13px;color:var(--quiet)}
+.toolbar{display:flex;gap:10px;align-items:center}.toolbar select{width:auto;min-width:144px;min-height:40px;font-size:13px}
+.empty{color:var(--quiet);font-size:14px;padding:14px 0}
+.card{padding:18px 0;border-bottom:1px solid var(--line)}.card:last-child{border-bottom:none}
+.cardhead{display:flex;gap:10px;align-items:center;justify-content:space-between}.pill{white-space:nowrap;color:#555;border:1px solid #bbb;border-radius:50px;padding:4px 9px;font-size:11px}
+.pill.approved{color:#166438;border-color:#8db89d}.pill.rejected{color:#666}
+.claim{font-size:16px;font-weight:700;line-height:1.4;margin:10px 0 5px;overflow-wrap:anywhere}.source{font-size:12px;color:var(--quiet);overflow-wrap:anywhere;margin:0 0 9px}
+.review{margin-top:10px}.review summary{font-size:13px;cursor:pointer;font-weight:650}
+.review-body{padding-top:13px}.excerpt{white-space:pre-wrap;overflow-wrap:anywhere;color:#444;padding:12px;background:#f5f5f5;border-radius:5px;max-height:180px;overflow:auto;font-size:13px}
+.review-body .field{margin:13px 0}.review-body .btn{min-height:40px;padding:9px 12px;font-size:13px}
+.connections{padding:22px 0 34px}.connection-body{padding:15px 0}.connection-body p{font-size:13px;color:var(--quiet);margin-bottom:10px}
+.connection-body code{font-size:12px;overflow-wrap:anywhere}
+.footer{border-top:1px solid var(--line);padding:18px 0 30px;color:var(--quiet);font-size:12px}
+@media(max-width:550px){.shell{width:calc(100% - 28px)}.intro{padding:26px 0 18px}.progress{gap:10px;font-size:11px}.step{padding:24px 0}.source-preview{align-items:flex-start}.source-preview p{max-width:195px}.links{gap:14px}.row.actions .btn{flex:1}.file-row{display:block}.file-row input{width:100%}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="shell top">
+  <a class="wordmark" href="/webapp/" aria-label="RoleHint home">rolehint</a>
+  <nav class="links" aria-label="Workspace"><a href="/webapp/">Find jobs</a><a href="/webapp/evidence.html" aria-current="page">Evidence</a></nav>
+</header>
+<main class="shell">
+  <section class="intro">
+    <p class="eyebrow">Private evidence workspace</p>
+    <h1>Keep proof of your work.</h1>
+    <p class="lead">Start with a source. Then describe what you did and review the claim.</p>
+  </section>
+  <div class="progress" aria-label="Evidence workflow progress" role="group">
+    <span id="progress-source" aria-current="step"><b>1</b> Source</span>
+    <span id="progress-claim"><b>2</b> Claim</span>
+    <span id="progress-review"><b>3</b> Review</span>
+  </div>
+  <form id="capture">
+    <section class="step" id="source-step" aria-labelledby="source-title">
+      <div class="step-heading">
+        <p class="eyebrow">Step 1</p>
+        <h2 id="source-title">Add a source</h2>
+        <p>Paste a passage or choose a text file. Only the excerpt you approve is submitted.</p>
+      </div>
+      <div id="source-editor">
+        <div class="field">
+          <label for="excerpt">Source excerpt</label>
+          <textarea id="excerpt" class="source-text" required minlength="8" maxlength="8000" placeholder="Paste the part that shows what happened."></textarea>
+        </div>
+        <div class="field">
+          <label for="file">Or choose a file</label>
+          <div class="file-row"><input id="file" type="file" accept=".txt,.md,.json,.csv,text/plain,application/json"><span class="help">TXT, MD, JSON, CSV · up to 1 MB</span></div>
+        </div>
+        <button class="btn" id="continue" type="button" disabled>Continue</button>
+        <p class="status" id="source-status" role="status" aria-live="polite"></p>
+      </div>
+      <div id="source-summary" class="source-preview hide">
+        <div><strong class="small">Source added</strong><p id="source-snippet"></p></div>
+        <button class="btn quiet" type="button" id="edit-source">Edit</button>
+      </div>
+    </section>
+    <section class="step hide" id="claim-step" aria-labelledby="claim-title">
+      <div class="step-heading">
+        <p class="eyebrow">Step 2</p>
+        <h2 id="claim-title">What did you do?</h2>
+        <p>Describe only the contribution supported by your source.</p>
+      </div>
+      <div class="field"><label for="project">Project</label><input id="project" required maxlength="120" placeholder="e.g. RoleHint" autocomplete="off"></div>
+      <div class="field"><label for="claim">Your contribution</label><textarea id="claim" required minlength="5" maxlength="600" placeholder="e.g. Built and tested the vacancy review flow"></textarea></div>
+      <div class="field"><label for="source-ref">Where is this from?</label><input id="source-ref" required maxlength="350" placeholder="e.g. README.md, chat title, meeting notes"></div>
+      <details class="optional" id="source-details">
+        <summary>Source details and limitations (optional)</summary>
+        <div class="optional-body">
+          <div class="field"><label for="source-kind">Source type</label>
+            <select id="source-kind"><option value="conversation-selection">Selected AI conversation</option><option value="document-selection">Selected document</option><option value="local-file">File selected by you</option><option value="conversation-export">Conversation export excerpt</option><option value="github">GitHub</option><option value="google-drive">Google Drive</option><option value="other-selected-source">Other selected source</option></select>
+          </div>
+          <div class="field"><label for="boundary">What does the source not prove?</label><textarea id="boundary" maxlength="1000" placeholder="e.g. It documents a test, not paid adoption."></textarea></div>
+        </div>
+      </details>
+      <div id="gate" class="gate hide">
+        <h3 id="gate-title">Save to your RoleHint account</h3>
+        <p id="gate-description">Sign in to keep evidence accessible on your devices.</p>
+        <div id="login-controls">
+          <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
+          <button id="sign-in" class="btn secondary" type="button">Email sign-in link</button>
+        </div>
+        <p class="status" id="gate-status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="row actions">
+        <button class="btn" id="save" type="submit">Save for review</button>
+        <button class="btn secondary" id="export-local" type="button">Download draft</button>
+      </div>
+      <p class="help action-help" id="action-help">Private by default. A saved claim is not independently verified.</p>
+      <p class="status" id="capture-status" role="status" aria-live="polite"></p>
+    </section>
+  </form>
+  <section class="review-section hide" id="review-section" aria-labelledby="review-title">
+    <div class="review-head">
+      <div><p class="eyebrow">Step 3</p><h2 id="review-title">Review evidence</h2><p>Check each source before accepting a claim.</p></div>
+      <div class="toolbar hide" id="review-toolbar"><label for="filter" class="small">Show</label><select id="filter"><option value="">All</option><option value="needs-review">Needs review</option><option value="approved-self-reported">Reviewed</option><option value="rejected">Rejected</option></select></div>
+    </div>
+    <p class="status" id="list-status" role="status" aria-live="polite"></p>
+    <div id="candidates"><p class="empty">No saved evidence yet.</p></div>
+  </section>
+  <details class="connections hide" id="connections-panel">
+    <summary>Connections and permissions</summary>
+    <div class="connection-body">
+      <p id="connector-status" class="status" role="status">Check your AI connections when you're ready.</p>
+      <div id="connector-ready" class="hide">
+        <p>Connect Claude or ChatGPT with your RoleHint account. You approve the requested permissions.</p>
+        <div class="row"><code id="mcp-url"></code><button class="btn secondary" id="copy-url" type="button">Copy address</button></div>
+        <div id="connections"></div>
+      </div>
+    </div>
+  </details>
+</main>
+<footer class="shell footer">rolehint · Your evidence stays private until you choose otherwise.</footer>
 <script>
-(()=>{'use strict';
-const $=id=>document.getElementById(id);let authenticated=false,loading=false,emailAvailable=null,remoteReady=false;
-const ticketCandidate=new URLSearchParams(location.search).get('connect')||'';
-const oauthTicket=/^[A-Za-z0-9_-]{32,96}$/.test(ticketCandidate)?ticketCandidate:'';
-if(oauthTicket){
-  $('gate').querySelector('h2').textContent='Sign in to connect your assistant.';
-  $('gate').querySelector('p').textContent='After email sign-in, review exactly which RoleHint permissions Claude or ChatGPT can use.';
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const state = {authenticated:false,emailAvailable:false,phase:'source',loading:false};
+const ticketCandidate = new URLSearchParams(location.search).get('connect') || '';
+const oauthTicket = /^[A-Za-z0-9_-]{32,96}$/.test(ticketCandidate) ? ticketCandidate : '';
+
+function notice(id,message,error=false) {
+  const element=$(id);
+  element.textContent=message;
+  element.classList.toggle('error',error);
+  element.classList.toggle('ok',!error && /saved|downloaded|restored/i.test(message));
 }
-function status(id,message,error=false){const el=$(id);el.textContent=message;el.classList.toggle('error',error);el.classList.toggle('ok',!error&&message.startsWith('Saved'))}
-function node(tag,cls,value){const el=document.createElement(tag);if(cls)el.className=cls;el.textContent=value;return el}
-async function api(url,options={}){const res=await fetch(url,{credentials:'same-origin',cache:'no-store',...options,headers:{...(options.method&&options.method!=='GET'?{'Origin':location.origin}:{}),...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});let value={};try{value=await res.json()}catch{}if(!res.ok){const error=new Error(typeof value.detail==='string'?value.detail:'Request failed ('+res.status+')');error.code=res.status;throw error}return value}
-async function auth(){try{const availability=await api('/web-api/auth-status');emailAvailable=availability.email_login_available===true}catch{emailAvailable=false}
-$('email').disabled=!emailAvailable;$('sign-in').disabled=!emailAvailable;
-try{await api('/web-api/me');authenticated=true;$('gate').classList.add('hide');if(oauthTicket){location.replace('/oauth/authorize/continue?ticket='+encodeURIComponent(oauthTicket));return}await refresh()}catch(error){if(error.code===401){authenticated=false;$('gate').classList.remove('hide');status('list-status','Sign in to see your saved evidence.')}else{status('list-status','Session check failed. Retry without losing your draft.',true)}}
-if(!authenticated&&!emailAvailable){$('gate').querySelector('h2').textContent='Account sign-in is not available yet.';$('gate').querySelector('p').textContent='This testing environment has no email delivery configured. You can prepare your evidence and download a local draft, but cloud saving and AI connection cannot finish yet.';status('gate-status','Email sign-in requires staging mail configuration.',true)}
-await connectors()}
-async function refresh(){if(!authenticated)return;status('list-status','Loading private evidence…');try{const filter=$('filter').value;const data=await api('/web-api/evidence/candidates'+(filter?'?status='+encodeURIComponent(filter):''));const items=data.candidates||[];$('count').textContent=items.length+' items';render(items);status('list-status','')}catch(error){status('list-status',error.message,true)}}
-function makeButton(label,cls,onClick){const b=document.createElement('button');b.type='button';b.className='btn '+cls;b.textContent=label;b.onclick=onClick;return b}
-function makeEdit(parent,label,value,max){const box=node('div','field','');const l=node('label','',label);const textarea=document.createElement('textarea');const id='field_'+Math.random().toString(36).slice(2);textarea.id=id;l.htmlFor=id;textarea.maxLength=max;textarea.value=value;box.append(l,textarea);parent.append(box);return textarea}
-function render(items){const list=$('candidates');list.replaceChildren();if(!items.length){list.append(node('div','empty','No items in this view. Capture a source excerpt to start.'));return}for(const item of items){const card=node('article','card','');const head=node('div','cardhead','');head.append(node('span','eyebrow',item.project),node('span','pill '+(item.status==='approved-self-reported'?'approved':item.status==='rejected'?'rejected':''),item.status==='needs-review'?'Needs review':item.status==='approved-self-reported'?'Reviewed · self-reported':'Rejected'));card.append(head,node('p','claim',item.claim),node('p','source',item.source_kind+' · '+item.source_ref));const details=document.createElement('details');details.className='review';const summary=node('summary','', 'Read source and review');details.append(summary,node('p','small muted','Selected source passage'),node('div','excerpt',item.source_excerpt),node('p','small muted','Limitation: '+(item.boundary||'Not independently verified')));if(item.status==='needs-review'){const claim=makeEdit(details,'Edit claim',item.claim,600),boundary=makeEdit(details,'Limits of this evidence',item.boundary||'',1000);const buttons=node('div','row','');buttons.append(makeButton('Approve as self-reported','',()=>review(item.id,{decision:'approve',claim:claim.value.trim(),boundary:boundary.value.trim()})),makeButton('Reject','secondary',()=>review(item.id,{decision:'reject'})));details.append(buttons)}details.append(makeButton('Delete draft','quiet',()=>{if(confirm('Delete this draft and its searchable evidence?'))remove(item.id)}));card.append(details);list.append(card)}}
-async function review(id,data){status('list-status','Saving review…');try{await api('/web-api/evidence/candidates/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(data)});await refresh();status('list-status','Saved review. Evidence remains self-reported.')}catch(e){status('list-status',e.message,true)}}
-async function remove(id){status('list-status','Deleting…');try{await api('/web-api/evidence/candidates/'+encodeURIComponent(id),{method:'DELETE'});await refresh();status('list-status','Saved deletion; linked searchable evidence was removed.')}catch(e){status('list-status',e.message,true)}}
-$('capture').onsubmit=async e=>{e.preventDefault();if(loading)return;if(!authenticated){$('gate').classList.remove('hide');if(emailAvailable)$('email').focus();status('capture-status',emailAvailable?'Sign in to save privately; you can also download your draft.':'Cloud saving is unavailable here. Download your local draft to preserve it.',true);return}const draft={project:$('project').value.trim(),claim:$('claim').value.trim(),source_excerpt:$('excerpt').value.trim(),source_kind:$('source-kind').value,source_ref:$('source-ref').value.trim(),boundary:$('boundary').value.trim()||'Selected material is not independent verification of work.'};loading=true;$('save').disabled=true;status('capture-status','Saving privately…');try{const data=await api('/web-api/evidence/candidates',{method:'POST',body:JSON.stringify({candidates:[draft]})});status('capture-status',data.items[0].created?'Saved privately. Review before using it.':'Saved already; duplicate was not added.');$('claim').value='';$('excerpt').value='';$('boundary').value='';$('file').value='';await refresh()}catch(err){status('capture-status',err.message,true)}finally{loading=false;$('save').disabled=false}};
-function currentDraft(){return {project:$('project').value.trim(),claim:$('claim').value.trim(),source_excerpt:$('excerpt').value.trim(),source_kind:$('source-kind').value,source_ref:$('source-ref').value.trim(),boundary:$('boundary').value.trim()||'Selected material is not independent verification of work.'}}
-$('export-local').onclick=()=>{if(!$('capture').reportValidity())return;const draft=currentDraft();const payload={format:'rolehint-evidence-draft',format_version:1,status:'needs-review',visibility:'private',verification_level:'unverified',candidate:draft};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const link=document.createElement('a');const url=URL.createObjectURL(blob);link.href=url;link.download='rolehint-private-evidence-draft.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);status('capture-status','Local file downloaded. Nothing was uploaded. Keep the file private.');};
-$('file').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>1048576||!/\.(txt|md|json|csv)$/i.test(file.name)){status('capture-status','Choose a TXT, MD, JSON or CSV file under 1 MB.',true);e.target.value='';return}try{const text=await file.text();let isDraft=false;if(file.name.toLowerCase().endsWith('.json')){try{const parsed=JSON.parse(text);if(parsed.format==='rolehint-evidence-draft'&&parsed.format_version===1){const candidate=parsed.candidate||{};if(typeof candidate.project!=='string'||typeof candidate.claim!=='string'||typeof candidate.source_excerpt!=='string'||typeof candidate.source_ref!=='string'||!candidate.project.trim()||!candidate.claim.trim()||!candidate.source_excerpt.trim()||!candidate.source_ref.trim()||candidate.project.length>120||candidate.claim.length>600||candidate.source_excerpt.length>8000||candidate.source_ref.length>350)throw Error('Invalid local draft');$('project').value=candidate.project;$('claim').value=candidate.claim;$('excerpt').value=candidate.source_excerpt;$('source-ref').value=candidate.source_ref;$('boundary').value=typeof candidate.boundary==='string'?candidate.boundary.slice(0,1000):'';if([...$('source-kind').options].some(o=>o.value===candidate.source_kind))$('source-kind').value=candidate.source_kind;isDraft=true}}catch(error){if(error.message==='Invalid local draft')throw error}}if(isDraft){status('capture-status','Local draft restored. Review before uploading; no cloud transfer occurred.');return}$('excerpt').value=text.slice(0,8000);$('source-ref').value=file.name.slice(0,350);$('source-kind').value='local-file';status('capture-status','Review the selected excerpt before saving. No upload yet.')}catch{status('capture-status','Could not read or validate this file.',true)}};
-$('filter').onchange=refresh;
-$('sign-in').onclick=async()=>{if(emailAvailable!==true){status('gate-status','Email sign-in is not enabled in this environment.',true);return}const email=$('email').value.trim();if(!email){$('email').focus();return}const b=$('sign-in');b.disabled=true;try{const r=await api('/web-api/login',{method:'POST',body:JSON.stringify({email,next:'evidence',...(oauthTicket?{connect:oauthTicket}:{})})});status('gate-status',r.message||'Check your email for a sign-in link.')}catch(e){status('gate-status',e.message,true)}finally{b.disabled=false}};
-async function connectors(){try{const meta=await api('/.well-known/oauth-protected-resource/mcp');if(meta.resource!==location.origin+'/mcp')throw Error('MCP URL does not match site');remoteReady=true;if(!authenticated){$('connector-ready').classList.add('hide');$('connector-status').textContent=emailAvailable===false?'The MCP server is online, but sign-in is not configured. Claude and ChatGPT cannot complete authorization yet.':'Sign in to RoleHint before connecting Claude or ChatGPT.';return}$('connector-ready').classList.remove('hide');$('mcp-url').textContent=meta.resource;$('connector-status').textContent='Account authorization is available. Connection must still be approved in Claude or ChatGPT.';await reloadConnections()}catch{remoteReady=false;$('connector-ready').classList.add('hide');$('connector-status').textContent='Hosted AI connector is not enabled here. Local draft export is available without sign-in.'}}
-async function reloadConnections(){if(!authenticated)return;try{const rows=(await api('/web-api/evidence/connections')).connections||[];const root=$('connections');root.replaceChildren();root.append(node('p','small muted',rows.length? 'Connected accounts':'No connected AI clients yet.'));for(const row of rows){const line=node('div','row','');line.append(node('span','small',row.name),makeButton('Revoke','secondary',async()=>{if(!confirm('Disconnect this AI client?'))return;await api('/web-api/evidence/connections/'+encodeURIComponent(row.client_id),{method:'DELETE'});await reloadConnections()}));root.append(line)}}catch{}}
-$('copy-url').onclick=async()=>{try{await navigator.clipboard.writeText($('mcp-url').textContent);$('copy-url').textContent='Copied'}catch{$('copy-url').textContent='Select and copy the address'}};
-auth();
+function make(tag,className,textValue) {
+  const element=document.createElement(tag);
+  if(className)element.className=className;
+  if(textValue!==undefined)element.textContent=textValue;
+  return element;
+}
+async function api(url,options={}) {
+  const response=await fetch(url,{credentials:'same-origin',cache:'no-store',...options,
+    headers:{...(options.method && options.method!=='GET' ? {'Origin':location.origin}:{}),
+    ...(options.body ? {'Content-Type':'application/json'}:{}),...options.headers}});
+  let body={};
+  try{body=await response.json()}catch{}
+  if(!response.ok){
+    const error=new Error(typeof body.detail==='string'?body.detail:'Request failed ('+response.status+')');
+    error.code=response.status;
+    throw error;
+  }
+  return body;
+}
+function progress(which) {
+  ['source','claim','review'].forEach(name=>{
+    const element=$('progress-'+name);
+    if(which===name)element.setAttribute('aria-current','step');
+    else element.removeAttribute('aria-current');
+  });
+}
+function updateContinue() {
+  $('continue').disabled=$('excerpt').value.trim().length<8;
+}
+function setPhase(name,scroll=true) {
+  state.phase=name;
+  $('source-editor').classList.toggle('hide',name!=='source');
+  $('source-summary').classList.toggle('hide',name==='source');
+  $('claim-step').classList.toggle('hide',name==='source');
+  $('source-snippet').textContent=$('excerpt').value.trim().slice(0,115);
+  progress(name);
+  if(name==='claim' && scroll && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    $('claim-step').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+function updateActions() {
+  const ready=state.authenticated;
+  $('review-section').classList.toggle('hide',!ready);
+  $('connections-panel').classList.toggle('hide',!ready);
+  $('gate').classList.toggle('hide',ready);
+  $('login-controls').classList.toggle('hide',!state.emailAvailable);
+  $('email').disabled=!state.emailAvailable;
+  $('sign-in').disabled=!state.emailAvailable;
+  $('save').classList.toggle('hide',!ready&&!state.emailAvailable);
+  $('export-local').classList.toggle('secondary',ready||state.emailAvailable);
+  $('save').textContent=ready?'Save for review':'Sign in to save';
+  $('export-local').textContent=ready?'Download copy':'Download private draft';
+  $('action-help').textContent=ready?
+    'Private and unverified until you review it.':
+    'Download stays on this device. Nothing is uploaded.';
+  $('gate-title').textContent=state.emailAvailable?'Sign in to save online':'Online saving is unavailable here';
+  $('gate-description').textContent=state.emailAvailable?
+    'You can also download a private draft without signing in.':
+    'Email login is not configured in this testing environment. You can still download your draft.';
+}
+async function authenticate() {
+  try{const available=await api('/web-api/auth-status');state.emailAvailable=available.email_login_available===true}
+  catch{state.emailAvailable=false}
+  try{
+    await api('/web-api/me');
+    state.authenticated=true;
+    if(oauthTicket){location.replace('/oauth/authorize/continue?ticket='+encodeURIComponent(oauthTicket));return}
+    await refresh();
+  }catch(error) {
+    if(error.code!==401)notice('capture-status','Could not check your session. Your draft has not been uploaded.',true);
+    state.authenticated=false;
+  }
+  updateActions();
+}
+function candidateInput(){
+  return {project:$('project').value.trim(),claim:$('claim').value.trim(),
+    source_excerpt:$('excerpt').value.trim(),source_kind:$('source-kind').value,
+    source_ref:$('source-ref').value.trim(),
+    boundary:$('boundary').value.trim()||'Selected material is not independent verification of work.'};
+}
+$('excerpt').addEventListener('input',updateContinue);
+$('continue').addEventListener('click',()=>{
+  if($('excerpt').value.trim().length<8){notice('source-status','Add at least eight characters of source text.',true);return}
+  setPhase('claim');
+  updateActions();
+});
+$('edit-source').addEventListener('click',()=>{setPhase('source',false);$('excerpt').focus()});
+$('file').addEventListener('change',async event=>{
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  if(file.size>1048576 || !/\.(txt|md|json|csv)$/i.test(file.name)){
+    notice('source-status','Choose a TXT, MD, JSON or CSV file under 1 MB.',true);
+    event.target.value='';
+    return;
+  }
+  try{
+    const contents=await file.text();
+    if(file.name.toLowerCase().endsWith('.json')){
+      let parsed;
+      try{parsed=JSON.parse(contents)}catch{}
+      if(parsed && parsed.format==='rolehint-evidence-draft' && parsed.format_version===1) {
+        const draft=parsed.candidate||{};
+        if(['project','claim','source_excerpt','source_ref'].some(key=>typeof draft[key]!=='string'||!draft[key].trim()) ||
+          draft.project.length>120||draft.claim.length>600||draft.source_excerpt.length>8000||draft.source_ref.length>350)
+          throw Error('Invalid local draft');
+        $('project').value=draft.project;
+        $('claim').value=draft.claim;
+        $('excerpt').value=draft.source_excerpt;
+        $('source-ref').value=draft.source_ref;
+        $('boundary').value=typeof draft.boundary==='string'?draft.boundary.slice(0,1000):'';
+        if([...$('source-kind').options].some(option=>option.value===draft.source_kind))
+          $('source-kind').value=draft.source_kind;
+        updateContinue();
+        setPhase('claim');
+        updateActions();
+        notice('capture-status','Draft restored. Review before saving; nothing was uploaded.');
+        return;
+      }
+    }
+    $('excerpt').value=contents.slice(0,8000);
+    $('source-ref').value=file.name.slice(0,350);
+    $('source-kind').value='local-file';
+    updateContinue();
+    notice('source-status',contents.length>8000?
+      'Showing the first 8,000 characters. Check the excerpt before continuing.':
+      'File preview loaded. Nothing has been uploaded.');
+  }catch{notice('source-status','Could not read or validate this file.',true)}
+});
+$('capture').addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(state.loading||state.phase!=='claim')return;
+  if(!state.authenticated){
+    notice('capture-status',state.emailAvailable?
+      'Sign in to save online, or download a private draft.':
+      'Online saving is not available. Download your private draft instead.',true);
+    if(state.emailAvailable)$('email').focus();
+    return;
+  }
+  if(!$('capture').reportValidity())return;
+  state.loading=true;$('save').disabled=true;
+  notice('capture-status','Saving...');
+  try{
+    const result=await api('/web-api/evidence/candidates',{
+      method:'POST',body:JSON.stringify({candidates:[candidateInput()]})});
+    const created=result.items&&result.items[0]&&result.items[0].created;
+    $('project').value='';$('claim').value='';$('excerpt').value='';$('source-ref').value='';
+    $('source-kind').value='conversation-selection';$('boundary').value='';$('file').value='';
+    $('source-details').open=false;
+    setPhase('source',false);updateContinue();
+    await refresh();
+    progress('review');
+    notice('list-status',created?'Saved privately. Review the new claim.':'This source was already saved.');
+    $('review-section').scrollIntoView({behavior:'auto',block:'start'});
+  }catch(error){notice('capture-status',error.message,true)}
+  finally{state.loading=false;$('save').disabled=false}
+});
+$('export-local').addEventListener('click',()=>{
+  if(state.phase!=='claim'||!$('capture').reportValidity())return;
+  const payload={format:'rolehint-evidence-draft',format_version:1,
+    status:'needs-review',visibility:'private',verification_level:'unverified',
+    candidate:candidateInput()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const href=URL.createObjectURL(blob);
+  const link=make('a');
+  link.href=href;link.download='rolehint-private-evidence-draft.json';
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(href),3000);
+  notice('capture-status','Draft downloaded. No data was uploaded. Keep the file private.');
+});
+$('sign-in').addEventListener('click',async()=>{
+  if(!state.emailAvailable){notice('gate-status','Email sign-in is unavailable here.',true);return}
+  const email=$('email').value.trim();
+  if(!$('email').reportValidity()||!email){$('email').focus();return}
+  $('sign-in').disabled=true;
+  try{
+    const result=await api('/web-api/login',{method:'POST',
+      body:JSON.stringify({email,next:'evidence',...(oauthTicket?{connect:oauthTicket}:{})})});
+    notice('gate-status',result.message||'Check your email for a sign-in link.');
+  }catch(error){notice('gate-status',error.message,true)}
+  finally{$('sign-in').disabled=false}
+});
+function editField(container,label,value,max) {
+  const field=make('div','field');
+  const title=make('label','',label);
+  const area=make('textarea');
+  const id='edit-'+Math.random().toString(36).slice(2);
+  area.id=id;area.maxLength=max;area.value=value;
+  title.htmlFor=id;
+  field.append(title,area);container.append(field);return area;
+}
+function action(label,variant,handler){
+  const button=make('button','btn '+variant,label);
+  button.type='button';button.addEventListener('click',handler);return button;
+}
+function render(items) {
+  const root=$('candidates');root.replaceChildren();
+  $('review-toolbar').classList.toggle('hide',items.length===0&&!$('filter').value);
+  if(!items.length){root.append(make('p','empty',$('filter').value?
+    'No evidence in this filter.':'No saved evidence yet. Add a source above to start.'));return}
+  for(const item of items){
+    const card=make('article','card');
+    const top=make('div','cardhead');
+    top.append(make('span','eyebrow',item.project),make('span','pill '+(
+      item.status==='approved-self-reported'?'approved':item.status==='rejected'?'rejected':''),
+      item.status==='needs-review'?'Needs review':item.status==='rejected'?'Rejected':'Reviewed'));
+    card.append(top,make('p','claim',item.claim),
+      make('p','source',item.source_kind+' · '+item.source_ref));
+    const details=make('details','review');
+    const summary=make('summary','', 'View source and actions');
+    const body=make('div','review-body');
+    body.append(make('p','help','Source excerpt'),make('div','excerpt',item.source_excerpt),
+      make('p','small muted','Limitation: '+(item.boundary||'Not independently verified')));
+    if(item.status==='needs-review'){
+      const claim=editField(body,'Edit claim',item.claim,600);
+      const boundary=editField(body,'Limits of this evidence',item.boundary||'',1000);
+      const buttons=make('div','row');
+      buttons.append(
+        action('Approve as self-reported','',()=>review(item.id,{decision:'approve',claim:claim.value.trim(),boundary:boundary.value.trim()})),
+        action('Reject','secondary',()=>review(item.id,{decision:'reject'})));
+      body.append(buttons);
+    }
+    const deletion=action('Delete evidence','quiet',()=>{
+      if(confirm('Delete this draft and any searchable evidence associated with it?'))remove(item.id)
+    });
+    body.append(deletion);details.append(summary,body);card.append(details);root.append(card);
+  }
+}
+async function refresh(){
+  if(!state.authenticated)return;
+  notice('list-status','Loading...');
+  try{
+    const filter=$('filter').value;
+    const result=await api('/web-api/evidence/candidates'+(filter?'?status='+encodeURIComponent(filter):''));
+    render(result.candidates||[]);
+    notice('list-status','');
+  }catch(error){notice('list-status',error.message,true)}
+}
+async function review(id,decision){
+  notice('list-status','Saving review...');
+  try{
+    await api('/web-api/evidence/candidates/'+encodeURIComponent(id),
+      {method:'PATCH',body:JSON.stringify(decision)});
+    await refresh();
+    notice('list-status','Review saved. This remains self-reported.');
+  }catch(error){notice('list-status',error.message,true)}
+}
+async function remove(id){
+  notice('list-status','Deleting...');
+  try{
+    await api('/web-api/evidence/candidates/'+encodeURIComponent(id),{method:'DELETE'});
+    await refresh();notice('list-status','Evidence deleted.');
+  }catch(error){notice('list-status',error.message,true)}
+}
+$('filter').addEventListener('change',refresh);
+async function connectors(){
+  const status=$('connector-status');
+  try{
+    const metadata=await api('/.well-known/oauth-protected-resource/mcp');
+    if(metadata.resource!==location.origin+'/mcp')throw Error('Unexpected connector address');
+    $('connector-ready').classList.remove('hide');
+    $('mcp-url').textContent=metadata.resource;
+    status.textContent='Connection requires approval in your assistant. No files are shared automatically.';
+    const result=await api('/web-api/evidence/connections');
+    const list=$('connections');list.replaceChildren();
+    const entries=result.connections||[];
+    if(!entries.length)list.append(make('p','help','No assistants connected.'));
+    for(const entry of entries){
+      const row=make('div','row');
+      row.append(make('span','small',entry.name),
+        action('Revoke','secondary',async()=>{
+          if(!confirm('Revoke this assistant connection?'))return;
+          await api('/web-api/evidence/connections/'+encodeURIComponent(entry.client_id),{method:'DELETE'});
+          await connectors();
+        }));
+      list.append(row);
+    }
+  }catch(error){
+    $('connector-ready').classList.add('hide');
+    status.textContent='Connection is not currently available. Your drafts stay on your device or in your RoleHint account.';
+  }
+}
+$('connections-panel').addEventListener('toggle',()=>{
+  if($('connections-panel').open && state.authenticated)connectors();
+});
+$('copy-url').addEventListener('click',async()=>{
+  try{await navigator.clipboard.writeText($('mcp-url').textContent);$('copy-url').textContent='Copied'}
+  catch{$('copy-url').textContent='Select the address to copy'}
+});
+updateContinue();
+authenticate();
 })();
-</script></body></html>
+</script>
+</body>
+</html>
