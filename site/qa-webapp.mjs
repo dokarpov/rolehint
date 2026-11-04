@@ -27,7 +27,7 @@ try{
           ?respond({authenticated:true,preferences:{remote_only:false,salary_floor_annual:0},search_profiles:[],jobs:[],free_used:0,free_limit:10})
           :respond({detail:'Please sign in'},401);
       }
-      if(path==='/web-api/auth-status')return respond({email_login_available:false});
+      if(path==='/web-api/auth-status')return respond({email_login_available:false,telegram_login_available:true});
       if(path==='/web-api/anonymous/cv-analysis')return respond({
         saved:false,evidence:[{evidence:'Product management, research and delivery outcomes.'}],
         insights:[{message:'Review extracted achievements before using them.'}],
@@ -77,6 +77,7 @@ try{
     await page.locator('#jobs-notify').click();
     assert(await page.locator('#auth-zone').isVisible(),'optional authentication unavailable at '+width);
     assert(await page.locator('#email-button').isDisabled(),'unconfigured email was enabled');
+    assert(await page.locator('#telegram-begin').isEnabled(),'configured Telegram option incorrectly disabled');
     await page.locator('#telegram-begin').click();
     await page.locator('#telegram-code-zone').waitFor({state:'visible'});
     await page.locator('#telegram-code').fill('12345678');
@@ -107,5 +108,22 @@ try{
     console.log('PASS fixture UX',width);
     await page.close();
   }
+  // When neither transport is configured, neither sign-in option is
+  // advertised as usable. Anonymous discovery remains available.
+  const noProvider=await browser.newPage({viewport:{width:390,height:844}});
+  await noProvider.route('**/web-api/auth-status',route=>route.fulfill({
+    status:200,contentType:'application/json',
+    body:'{"email_login_available":false,"telegram_login_available":false}'}));
+  await noProvider.route('**/web-api/me',route=>route.fulfill({
+    status:401,contentType:'application/json',body:'{"detail":"Sign in"}'}));
+  await noProvider.goto('http://127.0.0.1:8789/webapp/',{waitUntil:'domcontentloaded'});
+  await noProvider.locator('#auth-zone').waitFor({state:'hidden'});
+  await noProvider.locator('#jobs-notify').count();
+  await noProvider.waitForFunction(()=>
+    document.getElementById('telegram-begin').disabled &&
+    document.getElementById('email-button').disabled);
+  assert(await noProvider.locator('#start-screen').isVisible(),
+    'anonymous first value blocked by unconfigured sign-in providers');
+  await noProvider.close();
 }finally{await browser.close();server.kill()}
 console.log('Current RoleHint webapp fixture smoke passed; live end-to-end remains required.');
