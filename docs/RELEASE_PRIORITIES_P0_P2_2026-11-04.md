@@ -29,7 +29,7 @@ For one item, specify *both* the strongest verified stage and the outstanding ga
 - **Verified closed at *code/UX staging* level:** the three initial UX P0 defects (all-fields-at-once, premature unavailable sign-in wall, prominent connector setup), most optional-field/empty-state/card-friction P1s, and progressive-flow regression coverage. These are not reopened merely because broader authentication is blocked. See the [4 Nov UX review](product/EVIDENCE_UX_REVIEW_2026-11-04.md).
 - **Still blocked:** no \`CFA_SMTP_HOST\`/test sender in staging service variables and live \`email_login_available=false\`; real email sign-in, Claude/eligible ChatGPT OAuth consent, actual iPhone Safari, real database restore, and the end-to-end CV→job→application path have **not** passed.
 - **Outdated audit corrected:** the 21 Oct UX audit's “CV sent via GET” finding must be re-evaluated, not blindly carried forward. Current \`webapp/index.html\` uses \`POST /web-api/anonymous/matches\` with JSON and clears \`cvContext\` on discard. **Remaining risk:** this still sends derived CV excerpts in the request body and browser memory; anonymous privacy, TTL, request logging, source trace and complete discard behavior need their own negative/E2E checks. Switching GET→POST does not by itself satisfy privacy.
-- **Backend presence ≠ production acceptance:** SQLite FTS, OAuth/PCKE, ATS adapters, an authenticated web app and existing automated tests are real implementations. Do not label PostgreSQL/pgvector, paid unlimited, verified ten-opportunity deliveries, working SMTP or independently accepted employer submissions as complete without specific evidence.
+- **Backend presence ≠ production acceptance:** SQLite FTS, OAuth/PKCE, ATS adapters, an authenticated web app and existing automated tests are real implementations. Do not label PostgreSQL/pgvector, paid unlimited, verified ten-opportunity deliveries, working SMTP or independently accepted employer submissions as complete without specific evidence.
 
 ## 3. P0 — mandatory vertical-slice work packages, ordered
 
@@ -84,6 +84,17 @@ For one item, specify *both* the strongest verified stage and the outstanding ga
 | P1: verbose review cards | Status/claim/source first; disclosure for excerpt/actions | Pagination/conflict states |
 | P2: regressions missed progressive state | 320–1440 Chromium+WebKit and syntax gate | Real iPhone/VoiceOver |
 | P2: generic/repeated status text | Contextual source/save/review messages | Network-failure announcement and focus |
+
+## 7. Linear work packages and current owner-facing order
+
+The four Evidence Inbox subissues are intentionally **specific acceptance work**, not another copy of the 200 test scenarios:
+
+- [DAR-108](https://linear.app/dokarpov/issue/DAR-108) — **P0:** real email/OTP account → OAuth consent → Claude/eligible ChatGPT → evidence review; depends on working staging sender and DAR-33.
+- [DAR-109](https://linear.app/dokarpov/issue/DAR-109) — **P0:** actual staging volume restart/restore, cross-user deletion/retention, FTS and token revocation.
+- [DAR-110](https://linear.app/dokarpov/issue/DAR-110) — **P1:** lossless 401/5xx/offline session recovery (coded with browser regression, pending CI), 100+ item pagination, actionable error states, physical-device accessibility.
+- [DAR-111](https://linear.app/dokarpov/issue/DAR-111) — **P2:** optional advanced source controls, microcopy and visual polish **after** P0 gates.
+
+Existing [DAR-33–39](https://linear.app/dokarpov/issue/DAR-33) and [DAR-6](https://linear.app/dokarpov/issue/DAR-6) remain the owners of the broader core CV/ATS/quota/pack/application work. Their project priority labels need not all be set Urgent: *P0 is a release-blocking invariant for a named capability, not an instruction to pursue every domain simultaneously*. Track readiness evidence on the respective issue; do not create duplicate issues for every edge-case row.
 
 ## 7. Execution rhythm and proof, not ticket volume
 
