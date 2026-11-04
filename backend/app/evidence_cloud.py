@@ -87,13 +87,6 @@ class EvidenceCloud:
         with self.connection() as db:return [self.public(row) for row in db.execute(query,params)]
 
     def get_candidate(self,uid,cid):
-        with self.connection() as db:
-            row=db.execute("SELECT * FROM evidence_candidates WHERE user_id=? AND id=?",
-                           (uid,cid)).fetchone()
-            if row is None:raise CandidateNotFound()
-            return self.public(row)
-
-    def get_candidate(self,uid,cid):
         # Fetch by primary key AND owner: do not truncate access to the first
         # page of candidates, or expose another account's source text.
         with self.connection() as db:
@@ -163,6 +156,36 @@ class EvidenceCloud:
                 db.commit()
                 return self.public(db.execute("SELECT * FROM evidence_candidates WHERE id=?",(cid,)).fetchone())
             except BaseException:db.rollback();raise
+
+    def erase_inbox(self,uid):
+        """Erase this account's Inbox drafts, audit events and linked searchable
+        evidence atomically; never delete separate CV, jobs or application packs.
+
+        This deliberately does NOT claim complete account erasure. Historical
+        exports and independently generated application packages are separate.
+        """
+        with self.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                rows=db.execute(
+                    "SELECT approved_evidence_id FROM evidence_candidates WHERE user_id=?",
+                    (uid,)).fetchall()
+                ids=[row["approved_evidence_id"] for row in rows if row["approved_evidence_id"]]
+                # FTS5 is not a foreign-key table. Remove indexed plaintext
+                # before relational evidence in the same rollback-safe transaction.
+                for eid in ids:
+                    db.execute("DELETE FROM user_evidence_fts WHERE user_id=? AND evidence_id=?",
+                               (uid,eid))
+                    db.execute("DELETE FROM user_evidence WHERE user_id=? AND evidence_id=?",
+                               (uid,eid))
+                db.execute("DELETE FROM evidence_candidate_audit WHERE user_id=?",(uid,))
+                db.execute("DELETE FROM evidence_candidates WHERE user_id=?",(uid,))
+                db.commit()
+                return {"deleted_candidates":len(rows),"deleted_linked_evidence":len(ids),
+                        "scope":"evidence-inbox"}
+            except BaseException:
+                db.rollback()
+                raise
 
     def delete(self,uid,cid):
         with self.connection() as db:
