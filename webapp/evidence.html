@@ -137,7 +137,7 @@ input,select{min-height:45px}.source-text{min-height:158px}
   </form>
   <section class="review-section hide" id="review-section" aria-labelledby="review-title">
     <div class="review-head">
-      <div><p class="eyebrow">Step 3</p><h2 id="review-title">Review evidence</h2><p>Check each source before accepting a claim.</p></div>
+      <div><p class="eyebrow">Step 3</p><h2 id="review-title">Review evidence</h2><p>Check each source before accepting a claim.</p><button type="button" id="new-source" class="btn secondary hide">Add another source</button></div>
       <div class="toolbar hide" id="review-toolbar"><label for="filter" class="small">Show</label><select id="filter"><option value="">All</option><option value="needs-review">Needs review</option><option value="approved-self-reported">Reviewed</option><option value="rejected">Rejected</option></select></div>
     </div>
     <p class="status" id="list-status" role="status" aria-live="polite"></p>
@@ -201,9 +201,11 @@ function updateContinue() {
 }
 function setPhase(name,scroll=true) {
   state.phase=name;
+  $('source-step').classList.toggle('hide',name==='review');
   $('source-editor').classList.toggle('hide',name!=='source');
-  $('source-summary').classList.toggle('hide',name==='source');
-  $('claim-step').classList.toggle('hide',name==='source');
+  $('source-summary').classList.toggle('hide',name!=='claim');
+  $('claim-step').classList.toggle('hide',name!=='claim');
+  $('new-source').classList.toggle('hide',name!=='review');
   $('source-snippet').textContent=$('excerpt').value.trim().slice(0,115);
   progress(name);
   if(name==='claim' && scroll && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -257,6 +259,7 @@ $('continue').addEventListener('click',()=>{
   updateActions();
 });
 $('edit-source').addEventListener('click',()=>{setPhase('source',false);$('excerpt').focus()});
+$('new-source').addEventListener('click',()=>{setPhase('source');$('source-step').scrollIntoView({behavior:'auto',block:'start'});$('excerpt').focus()});
 $('file').addEventListener('change',async event=>{
   const file=event.target.files&&event.target.files[0];
   if(!file)return;
@@ -318,9 +321,8 @@ $('capture').addEventListener('submit',async event=>{
     $('project').value='';$('claim').value='';$('excerpt').value='';$('source-ref').value='';
     $('source-kind').value='conversation-selection';$('boundary').value='';$('file').value='';
     $('source-details').open=false;
-    setPhase('source',false);updateContinue();
+    setPhase('review',false);updateContinue();
     await refresh();
-    progress('review');
     notice('list-status',created?'Saved privately. Review the new claim.':'This source was already saved.');
     $('review-section').scrollIntoView({behavior:'auto',block:'start'});
   }catch(error){notice('capture-status',error.message,true)}
