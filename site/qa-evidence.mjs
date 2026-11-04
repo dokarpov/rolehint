@@ -9,7 +9,8 @@ const browser=await (engine==='webkit'?webkit:chromium).launch({headless:true});
 const base='http://127.0.0.1:8791';
 const assert=(value,message)=>{if(!value)throw Error(message)};
 
-async function setup(page,authenticated,candidates=[],requests=[]){
+async function setup(page,authenticated,candidates=[],requests=[],options={}){
+  let loggedIn=authenticated;
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   page.on('dialog',dialog=>dialog.accept());
@@ -20,13 +21,26 @@ async function setup(page,authenticated,candidates=[],requests=[]){
     const method=request.method();
     const respond=(data,status=200)=>route.fulfill({
       status,contentType:'application/json',body:JSON.stringify(data)});
-    if(path==='/web-api/auth-status')return respond({email_login_available:authenticated});
+    if(path==='/web-api/auth-status')return respond({
+      email_login_available:options.emailAvailable??authenticated,
+      telegram_login_available:options.telegramAvailable===true});
+    if(path==='/web-api/telegram/begin'){
+      if(!options.telegramAvailable)return respond({detail:'Telegram login not configured'},503);
+      return respond({url:'https://t.me/RoleHintTestBot?start=web_synthetic_test_1234567890'});
+    }
+    if(path==='/web-api/telegram/complete'){
+      if(!options.telegramAvailable)return respond({detail:'Telegram login not configured'},503);
+      if(request.postDataJSON().code!=='12345678')
+        return respond({detail:'Incorrect or expired login code'},401);
+      loggedIn=true;
+      return respond({ok:true});
+    }
     if(path==='/web-api/me')
-      return authenticated?respond({authenticated:true}):respond({detail:'Please sign in'},401);
+      return loggedIn?respond({authenticated:true}):respond({detail:'Please sign in'},401);
     if(path==='/web-api/evidence/candidates'&&method==='GET')
-      return authenticated?respond({candidates}):respond({detail:'Please sign in'},401);
+      return loggedIn?respond({candidates}):respond({detail:'Please sign in'},401);
     if(path==='/web-api/evidence/candidates'&&method==='POST'){
-      assert(authenticated,'guest attempted cloud save');
+      assert(loggedIn,'guest attempted cloud save');
       assert(request.headers().origin===base,'missing same-origin protection');
       const data=request.postDataJSON();
       assert(data.candidates.length===1,'one candidate required');
@@ -156,6 +170,39 @@ try{
   assert(errors.length===0,'guest JS errors: '+errors.join('; '));
   console.log('PASS progressive guest/offline source capture and portable draft',engine);
   await guest.close();
+
+  // Test the existing backend-compatible Telegram OTP fallback at the
+  // contextual save step, including keyboard Enter and source preservation.
+  const tg=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const tgWrites=[],tgErrors=await setup(tg,false,[],tgWrites,{
+    telegramAvailable:true,emailAvailable:false});
+  await tg.goto(base+'/webapp/evidence.html',{waitUntil:'domcontentloaded'});
+  assert(!(await tg.locator('#gate').isVisible()),'Telegram login wall blocks first value');
+  await fillSource(tg,'Synthetic source passage showing a tested application flow with owner review.');
+  await tg.locator('#telegram-controls').waitFor({state:'visible'});
+  assert(!(await tg.locator('#email-option').isVisible()),'Email presented despite no configured mail provider');
+  await tg.locator('#telegram-begin').click();
+  await tg.locator('#telegram-code-zone').waitFor({state:'visible'});
+  assert((await tg.locator('#telegram-open').getAttribute('href')).startsWith('https://t.me/RoleHintTestBot?start='),
+    'Telegram URL was not obtained from backend');
+  await tg.locator('#project').fill('RoleHint');
+  await tg.locator('#claim').fill('Reviewed a candidate evidence flow');
+  await tg.locator('#source-ref').fill('test-run.md');
+  await tg.locator('#telegram-code').fill('87654321');
+  await tg.locator('#telegram-code').press('Enter');
+  await tg.getByText('Incorrect or expired login code').waitFor();
+  assert(await tg.locator('#claim').inputValue()==='Reviewed a candidate evidence flow',
+    'Incorrect OTP erased the candidate claim');
+  await tg.locator('#telegram-code').fill('12345678');
+  await tg.locator('#telegram-code').press('Enter');
+  await tg.locator('#review-section').waitFor({state:'visible'});
+  assert(!(await tg.locator('#gate').isVisible()),'successful Telegram OTP failed to restore account');
+  assert(await tg.locator('#claim').inputValue()==='Reviewed a candidate evidence flow',
+    'successful Telegram OTP discarded the draft');
+  assert(tgWrites.length===0,'Telegram verification silently uploaded evidence');
+  assert(tgErrors.length===0,'Telegram fixture JS errors: '+tgErrors.join('; '));
+  console.log('PASS Telegram OTP save-step fallback, wrong code and lossless sign-in',engine);
+  await tg.close();
 
   // A temporary outage does not mean the authenticated user was logged out.
   // Keep all unsaved evidence and let the user retry the session check.
