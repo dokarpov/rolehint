@@ -156,6 +156,35 @@ try{
   assert(errors.length===0,'guest JS errors: '+errors.join('; '));
   console.log('PASS progressive guest/offline source capture and portable draft',engine);
   await guest.close();
+
+  // A temporary outage does not mean the authenticated user was logged out.
+  // Keep all unsaved evidence and let the user retry the session check.
+  const interrupted=await browser.newPage({viewport:{width:390,height:844},acceptDownloads:true});
+  const interruptedErrors=await setup(interrupted,true,[],[]);
+  let unavailable=true;
+  await interrupted.route('**/web-api/me',route=>route.fulfill({
+    status:unavailable?503:200,contentType:'application/json',
+    body:JSON.stringify(unavailable?{detail:'Temporary outage'}:{authenticated:true})
+  }));
+  await interrupted.goto(base+'/webapp/evidence.html',{waitUntil:'domcontentloaded'});
+  await fillSource(interrupted,'An example document records an evidence capture with a safe retry.');
+  await interrupted.getByText('Connection interrupted',{exact:true}).waitFor();
+  assert(await interrupted.locator('#retry-session').isVisible(),'session retry unavailable during outage');
+  assert(!(await interrupted.locator('#login-controls').isVisible()),'server outage incorrectly prompts account login');
+  assert(!(await interrupted.locator('#save').isVisible()),'save allowed with unverified session');
+  await interrupted.locator('#project').fill('RoleHint');
+  await interrupted.locator('#claim').fill('Recovered an unsaved source after a transient outage');
+  await interrupted.locator('#source-ref').fill('recovery-test.md');
+  unavailable=false;
+  await interrupted.locator('#retry-session').click();
+  await interrupted.locator('#review-section').waitFor({state:'visible'});
+  assert(!(await interrupted.locator('#gate').isVisible()),'session did not recover after successful retry');
+  assert(await interrupted.locator('#claim').inputValue()==='Recovered an unsaved source after a transient outage',
+    'session retry lost unsaved evidence');
+  assert(await interrupted.locator('#save').isVisible(),'cloud save did not recover after 200 session check');
+  assert(interruptedErrors.length===0,'outage/retry JS errors: '+interruptedErrors.join('; '));
+  console.log('PASS session outage vs logout, lossless retry',engine);
+  await interrupted.close();
 }finally{
   await browser.close();
   server.kill();
