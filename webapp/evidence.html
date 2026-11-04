@@ -125,6 +125,9 @@ input,select{min-height:45px}.source-text{min-height:158px}
           <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
           <button id="sign-in" class="btn secondary" type="button">Email sign-in link</button>
         </div>
+        <div class="row hide" id="session-retry-controls">
+          <button id="retry-session" class="btn secondary" type="button">Retry account check</button>
+        </div>
         <p class="status" id="gate-status" role="status" aria-live="polite"></p>
       </div>
       <div class="row actions">
@@ -160,7 +163,7 @@ input,select{min-height:45px}.source-text{min-height:158px}
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const state = {authenticated:false,emailAvailable:false,phase:'source',loading:false};
+const state = {authenticated:false,emailAvailable:false,sessionUnavailable:false,phase:'source',loading:false};
 const ticketCandidate = new URLSearchParams(location.search).get('connect') || '';
 const oauthTicket = /^[A-Za-z0-9_-]{32,96}$/.test(ticketCandidate) ? ticketCandidate : '';
 
@@ -217,22 +220,27 @@ function updateActions() {
   $('review-section').classList.toggle('hide',!ready);
   $('connections-panel').classList.toggle('hide',!ready);
   $('gate').classList.toggle('hide',ready);
-  $('login-controls').classList.toggle('hide',!state.emailAvailable);
-  $('email').disabled=!state.emailAvailable;
-  $('sign-in').disabled=!state.emailAvailable;
-  $('save').classList.toggle('hide',!ready&&!state.emailAvailable);
+  $('login-controls').classList.toggle('hide',!state.emailAvailable||state.sessionUnavailable);
+  $('session-retry-controls').classList.toggle('hide',!state.sessionUnavailable);
+  $('email').disabled=!state.emailAvailable||state.sessionUnavailable;
+  $('sign-in').disabled=!state.emailAvailable||state.sessionUnavailable;
+  $('save').classList.toggle('hide',!ready&&(!state.emailAvailable||state.sessionUnavailable));
   $('export-local').classList.toggle('secondary',ready||state.emailAvailable);
   $('save').textContent=ready?'Save for review':'Sign in to save';
   $('export-local').textContent=ready?'Download copy':'Download private draft';
   $('action-help').textContent=ready?
     'Private and unverified until you review it.':
     'Download stays on this device. Nothing is uploaded.';
-  $('gate-title').textContent=state.emailAvailable?'Sign in to save online':'Online saving is unavailable here';
-  $('gate-description').textContent=state.emailAvailable?
-    'You can also download a private draft without signing in.':
+  $('gate-title').textContent=state.sessionUnavailable?'Connection interrupted':
+    state.emailAvailable?'Sign in to save online':'Online saving is unavailable here';
+  $('gate-description').textContent=state.sessionUnavailable?
+    'We cannot check your account. Your draft is still here. Retry the connection or download a private copy.':
+    state.emailAvailable?'You can also download a private draft without signing in.':
     'Email login is not configured in this testing environment. You can still download your draft.';
 }
 async function authenticate() {
+  if(state.loading)return;
+  state.sessionUnavailable=false;
   try{const available=await api('/web-api/auth-status');state.emailAvailable=available.email_login_available===true}
   catch{state.emailAvailable=false}
   try{
@@ -240,9 +248,12 @@ async function authenticate() {
     state.authenticated=true;
     if(oauthTicket){location.replace('/oauth/authorize/continue?ticket='+encodeURIComponent(oauthTicket));return}
     await refresh();
+    notice('gate-status','');
   }catch(error) {
-    if(error.code!==401)notice('capture-status','Could not check your session. Your draft has not been uploaded.',true);
     state.authenticated=false;
+    state.sessionUnavailable=error.code!==401;
+    if(state.sessionUnavailable)
+      notice('gate-status','Account check failed. This does not mean you were signed out.',true);
   }
   updateActions();
 }
@@ -340,6 +351,10 @@ $('export-local').addEventListener('click',()=>{
   document.body.append(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(href),3000);
   notice('capture-status','Draft downloaded. No data was uploaded. Keep the file private.');
+});
+$('retry-session').addEventListener('click',async()=>{
+  $('retry-session').disabled=true;
+  try{await authenticate()}finally{$('retry-session').disabled=false}
 });
 $('sign-in').addEventListener('click',async()=>{
   if(!state.emailAvailable){notice('gate-status','Email sign-in is unavailable here.',true);return}
