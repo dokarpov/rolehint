@@ -54,7 +54,7 @@ async function refresh(){try{const d=await api('me');signedIn=true;$('guest').cl
     // A network failure or 5xx is NOT an authentication failure.
     // Keep the existing workspace and any unsaved CV/application edits.
     $('retry-workspace').classList.remove('hide');
-    text('top-status','Connection interrupted');
+    text('top-status','Connection issue');
     if(signedIn)text('member-message','Connection interrupted: your workspace was not cleared. Retry when ready.');
     else text('auth-message','Could not check your session. Retry the connection without losing your draft.');
   }
@@ -78,5 +78,21 @@ $('telegram-begin').onclick=async()=>{text('auth-message','Connecting to Telegra
 $('telegram-complete').onsubmit=async e=>{e.preventDefault();try{await api('telegram/complete',{method:'POST',body:JSON.stringify({code:$('telegram-code').value.trim()})});text('auth-message','Signed in. Restoring your workspace…');await refresh();window.scrollTo({top:0,behavior:'instant'})}catch(err){text('auth-message',err.message)}};
 $('login').onsubmit=async e=>{e.preventDefault();try{const d=await api('login',{method:'POST',body:JSON.stringify({email:$('email').value})});text('auth-message',d.message)}catch(e){text('auth-message',e.message)}};
 $('logout').onclick=async()=>{try{const r=await fetch('/web-api/logout',{method:'POST',credentials:'same-origin',headers:{'Origin':location.origin}});if(!r.ok)throw Error('Could not sign out');location.reload()}catch(e){text('member-message',e.message)}};
-async function authStatus(){try{const r=await api('auth-status');if(!r.email_login_available){const b=$('email-button');b.disabled=true;b.textContent='Email sign-in not available yet';text('auth-message','Email sign-in is unavailable. Use the Telegram sign-in option below to access your web workspace.')}}catch{const b=$('email-button');b.disabled=true;text('auth-message','Sign-in availability could not be checked. Please retry later.')}}$('retry-workspace').onclick=()=>refresh();refresh();authStatus();
+async function authStatus(){try{
+  const result=await api('auth-status');
+  const emailAvailable=result.email_login_available===true;
+  const telegramAvailable=result.telegram_login_available===true;
+  $('email-button').disabled=!emailAvailable;
+  $('email-button').textContent=emailAvailable?'Send sign-in link':'Email sign-in unavailable';
+  $('telegram-begin').disabled=!telegramAvailable;
+  $('telegram-begin').textContent=telegramAvailable?'Continue with Telegram':'Telegram sign-in unavailable';
+  text('auth-message',emailAvailable||telegramAvailable?
+    (emailAvailable&&!telegramAvailable?'Email sign-in is available.':
+     telegramAvailable&&!emailAvailable?'Use Telegram to sign in; email is not configured.':''):
+    'Sign-in is not configured here yet. You can still preview vacancies without an account.');
+}catch{
+  $('email-button').disabled=true;
+  $('telegram-begin').disabled=true;
+  text('auth-message','Could not check sign-in availability. Reload to retry.');
+}}$('retry-workspace').onclick=()=>refresh();refresh();authStatus();
 </script></body></html>
