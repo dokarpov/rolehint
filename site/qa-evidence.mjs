@@ -101,7 +101,7 @@ try{
     await page.locator('.card details summary').click();
     assert((await page.locator('.card .excerpt').innerText()).includes('A source log describes'),'source excerpt not available on request');
     await page.getByRole('button',{name:'Approve as self-reported'}).click();
-    await page.getByText('Reviewed',{exact:true}).waitFor();
+    await page.locator('.card .pill.approved').waitFor({state:'visible'});
     await page.locator('.card details summary').click();
     await page.getByRole('button',{name:'Delete evidence'}).click();
     await page.getByText(/No saved evidence yet/).waitFor();
