@@ -99,3 +99,46 @@ def test_bulk_erase_rolls_back_when_fts_cannot_be_updated(cloud):
     with cloud.connection() as db:
         assert db.execute("SELECT COUNT(*) FROM evidence_candidate_audit WHERE user_id='u1'").fetchone()[0]==2
         assert db.execute("SELECT COUNT(*) FROM user_evidence WHERE user_id='u1'").fetchone()[0]==1
+
+def test_erasure_http_enforces_origin_identity_and_confirmed_scope(cloud):
+    from fastapi import FastAPI,HTTPException,Request
+    from fastapi.testclient import TestClient
+    from app.web_evidence_api import init_routes
+
+    def identity(request:Request):
+        uid=request.headers.get("X-Test-User","")
+        if uid not in ("u1","u2"):raise HTTPException(401,"Sign in")
+        return uid
+
+    def check_origin(request:Request):
+        if request.headers.get("Origin")!="https://rolehint.example":
+            raise HTTPException(403,"Invalid origin")
+
+    app=FastAPI()
+    app.include_router(init_routes(cloud.path,identity,check_origin),prefix="/web-api")
+    path="/web-api/evidence/candidates"
+    payload={"candidates":[source().model_dump()]}
+    with TestClient(app,base_url="https://rolehint.example") as client:
+        origin={"Origin":"https://rolehint.example"}
+        a={**origin,"X-Test-User":"u1"}
+        b={**origin,"X-Test-User":"u2"}
+        erase={"confirmation":"DELETE MY EVIDENCE"}
+        assert client.request("DELETE",path,headers=origin,json=erase).status_code==401
+        assert client.request("DELETE",path,headers={"X-Test-User":"u1"},
+                              json=erase).status_code==403
+        assert client.request("DELETE",path,headers=a,
+                              json={"confirmation":"DELETE ALL"}).status_code==422
+        assert client.request("DELETE",path,headers=a,
+                              json={**erase,"override":True}).status_code==422
+        ca=client.post(path,headers=a,json=payload).json()["items"][0]["candidate"]["id"]
+        cb=client.post(path,headers=b,json=payload).json()["items"][0]["candidate"]["id"]
+        assert client.patch(path+"/"+ca,headers=a,json={"decision":"approve"}).status_code==200
+        assert client.patch(path+"/"+cb,headers=b,json={"decision":"approve"}).status_code==200
+        result=client.request("DELETE",path,headers=a,json=erase)
+        assert result.status_code==200,result.text
+        assert result.json()=={"deleted_candidates":1,"deleted_linked_evidence":1,
+                               "scope":"evidence-inbox"}
+        assert result.headers["Cache-Control"]=="private, no-store"
+        assert client.get(path,headers=a).json()["candidates"]==[]
+        assert client.get(path,headers=b).json()["candidates"][0]["id"]==cb
+        assert client.request("DELETE",path,headers=a,json=erase).json()["deleted_candidates"]==0
