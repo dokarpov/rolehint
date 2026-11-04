@@ -15,15 +15,18 @@ try{
   for(const width of [320,375,390,430,768,1440]){
     const page=await browser.newPage({viewport:{width,height:844},isMobile:width<500,hasTouch:width<500});
     const errors=[],searches=[];
-    let authenticated=false;
+    let authenticated=false,profileUnavailable=false;
     page.on('pageerror',e=>errors.push(e.message));
     page.on('popup',async p=>{try{await p.close()}catch{}});
     await page.route('**/web-api/**',async route=>{
       const req=route.request(),path=new URL(req.url()).pathname;
       const respond=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
-      if(path==='/web-api/me')return authenticated
-        ?respond({authenticated:true,preferences:{remote_only:false,salary_floor_annual:0},search_profiles:[],jobs:[],free_used:0,free_limit:10})
-        :respond({detail:'Please sign in'},401);
+      if(path==='/web-api/me'){
+        if(profileUnavailable)return respond({detail:'Temporary upstream failure'},503);
+        return authenticated
+          ?respond({authenticated:true,preferences:{remote_only:false,salary_floor_annual:0},search_profiles:[],jobs:[],free_used:0,free_limit:10})
+          :respond({detail:'Please sign in'},401);
+      }
       if(path==='/web-api/auth-status')return respond({email_login_available:false});
       if(path==='/web-api/anonymous/cv-analysis')return respond({
         saved:false,evidence:[{evidence:'Product management, research and delivery outcomes.'}],
@@ -79,6 +82,27 @@ try{
     await page.locator('#telegram-code').fill('12345678');
     await page.locator('#telegram-complete button[type=submit]').click();
     await page.locator('#member').waitFor({state:'visible'});
+    await page.locator('#target-role').fill('RoleHint account retry fixture');
+    profileUnavailable=true;
+    await page.evaluate(()=>window.refresh());
+    assert(await page.locator('#member').isVisible(),'503 incorrectly logged out a real user at '+width);
+    assert(!(await page.locator('#guest').isVisible()),'503 incorrectly exposed guest state at '+width);
+    assert(await page.locator('#retry-workspace').isVisible(),'503 did not show connection Retry at '+width);
+    assert(await page.locator('#target-role').inputValue()==='RoleHint account retry fixture',
+      '503 discarded unsaved role at '+width);
+    const errorOverflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+    assert(errorOverflow<=2,'retry state horizontal overflow at '+width+': '+errorOverflow);
+    profileUnavailable=false;
+    await page.locator('#retry-workspace').click();
+    await page.locator('#retry-workspace').waitFor({state:'hidden'});
+    assert(await page.locator('#member').isVisible(),'successful retry did not recover member view');
+    assert(await page.locator('#target-role').inputValue()==='RoleHint account retry fixture',
+      'retry discarded unsaved role at '+width);
+    authenticated=false;
+    await page.evaluate(()=>window.refresh());
+    assert(!(await page.locator('#member').isVisible()),'real 401 did not end session');
+    assert(await page.locator('#guest').isVisible(),'real 401 did not show guest');
+    assert(!(await page.locator('#retry-workspace').isVisible()),'real logout shows stale retry control');
     assert(!errors.length,'page exceptions '+width+': '+errors.join(' | '));
     console.log('PASS fixture UX',width);
     await page.close();
