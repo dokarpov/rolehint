@@ -1,4 +1,7 @@
 # RoleHint Evidence Inbox — UX review and progressive disclosure
+
+> **Execution state:** the reviewed presentation defects were addressed on staging at deployed commit `df4758a856bc08fc0b1153ec2952ba2efc429d5d`, with Chromium/WebKit fixture tests, but real SMTP, account session, Claude/ChatGPT OAuth, physical iPhone and recovery are not accepted. **Current priority and unclosed gates:** [RoleHint P0–P2 execution register](../RELEASE_PRIORITIES_P0_P2_2026-11-04.md). Distinguish *UX presentation shipped to staging* from *end-to-end product accepted*.
+
 **4 November 2026 · staging scope only · PR #13 · production unchanged**
 
 ## What was observed
