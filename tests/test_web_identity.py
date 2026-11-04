@@ -43,3 +43,29 @@ def test_web_auth_closed_without_mail_transport(monkeypatch):
     with TestClient(app,base_url="https://rolehint.example") as client:
         r=client.post("/web-api/login",headers={"Origin":"https://rolehint.example"},json={"email":"person@example.com"})
         assert r.status_code in (403,503)
+
+def test_auth_status_advertises_only_really_configured_sign_in_providers(monkeypatch):
+    base="https://rolehint.example"
+    monkeypatch.setenv("CFA_WEB_APP_URL",base)
+    for key in ("CFA_SMTP_HOST","CFA_MAIL_FROM","TELEGRAM_BOT_TOKEN","CFA_INTERNAL_BOT_SECRET"):
+        monkeypatch.delenv(key,raising=False)
+    with TestClient(app,base_url=base) as client:
+        none=client.get("/web-api/auth-status")
+        assert none.status_code==200
+        assert none.json()=={"email_login_available":False,"telegram_login_available":False}
+        assert none.headers["Cache-Control"]=="no-store"
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN","123456:non-production-fixture")
+        # A token alone cannot complete a Telegram challenge without the
+        # bot-to-backend secret. Do not advertise a dead-end sign-in option.
+        assert client.get("/web-api/auth-status").json()["telegram_login_available"] is False
+        monkeypatch.setenv("CFA_INTERNAL_BOT_SECRET","test-only-callback-secret")
+        telegram=client.get("/web-api/auth-status").json()
+        assert telegram=={"email_login_available":False,"telegram_login_available":True}
+        assert "123456" not in str(telegram)
+        monkeypatch.setenv("CFA_SMTP_HOST","smtp.example")
+        monkeypatch.setenv("CFA_MAIL_FROM","staging@rolehint.example")
+        both=client.get("/web-api/auth-status").json()
+        assert both=={"email_login_available":True,"telegram_login_available":True}
+        monkeypatch.delenv("CFA_INTERNAL_BOT_SECRET")
+        only_email=client.get("/web-api/auth-status").json()
+        assert only_email=={"email_login_available":True,"telegram_login_available":False}
