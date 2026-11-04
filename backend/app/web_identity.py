@@ -171,9 +171,17 @@ def init_routes(product):
     def auth_status():
         try:
             configuration()
-            return {"email_login_available":True}
+            email_available=True
         except HTTPException:
-            return {"email_login_available":False}
+            email_available=False
+        # Do not advertise Telegram as a working alternative if the bot
+        # cannot deliver the challenge through its authenticated callback.
+        telegram_available=bool(
+            os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("CFA_INTERNAL_BOT_SECRET"))
+        return ResponseJSON(
+            {"email_login_available":email_available,
+             "telegram_login_available":telegram_available},
+            headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"})
 
     @router.post("/login")
     async def request_link(request:Request):
