@@ -225,7 +225,7 @@ function updateActions() {
   $('email').disabled=!state.emailAvailable||state.sessionUnavailable;
   $('sign-in').disabled=!state.emailAvailable||state.sessionUnavailable;
   $('save').classList.toggle('hide',!ready&&(!state.emailAvailable||state.sessionUnavailable));
-  $('export-local').classList.toggle('secondary',ready||state.emailAvailable);
+  $('export-local').classList.toggle('secondary',ready||(state.emailAvailable&&!state.sessionUnavailable));
   $('save').textContent=ready?'Save for review':'Sign in to save';
   $('export-local').textContent=ready?'Download copy':'Download private draft';
   $('action-help').textContent=ready?
@@ -316,10 +316,11 @@ $('capture').addEventListener('submit',async event=>{
   event.preventDefault();
   if(state.loading||state.phase!=='claim')return;
   if(!state.authenticated){
-    notice('capture-status',state.emailAvailable?
-      'Sign in to save online, or download a private draft.':
+    notice('capture-status',state.sessionUnavailable?
+      'Cannot verify your account. Retry the connection or download your draft.':
+      state.emailAvailable?'Sign in to save online, or download a private draft.':
       'Online saving is not available. Download your private draft instead.',true);
-    if(state.emailAvailable)$('email').focus();
+    if(state.emailAvailable&&!state.sessionUnavailable)$('email').focus();
     return;
   }
   if(!$('capture').reportValidity())return;
