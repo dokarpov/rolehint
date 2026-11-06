@@ -65,3 +65,30 @@ def test_new_user_can_start_real_discovery_without_oauth(monkeypatch):
     assert state.status_code==200,state.text
     profiles=state.json()["autopilot"]["search_profiles"]
     assert any(p["query"]=="Senior Product Manager" for p in profiles)
+
+
+def test_legacy_guard_remains_closed_when_beta_flag_is_missing_or_disabled(monkeypatch):
+    # Before this fix, missing/0 disabled the entire HTTP boundary.
+    for flag in (None, "0", "1"):
+        if flag is None:
+            monkeypatch.delenv("CFA_PUBLIC_BETA_LOCK", raising=False)
+        else:
+            monkeypatch.setenv("CFA_PUBLIC_BETA_LOCK", flag)
+        for mode in ("selfhost", "managed"):
+            monkeypatch.setenv("CFA_RUNTIME_MODE", mode)
+            for method, path in (
+                ("get", "/evidence"),
+                ("get", "/evidence/search?q=private"),
+                ("post", "/evidence/confirm/any"),
+                ("post", "/jobs/search"),
+                ("post", "/subscriptions/run-due"),
+                ("get", "/docs"),
+            ):
+                response=getattr(client, method)(path)
+                assert response.status_code == 503, (flag, mode, method, path, response.status_code)
+
+
+def test_beta_public_boundaries_keep_auth_checks():
+    assert client.get("/web-api/me").status_code == 401
+    assert client.get("/downloads/does-not-exist").status_code == 404
+    assert client.get("/health").status_code == 200
