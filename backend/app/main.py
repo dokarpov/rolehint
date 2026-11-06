@@ -677,7 +677,10 @@ def download_export(token:str):
       headers={
         "Content-Disposition":f'attachment; filename="{item["file_name"]}"',
         "Access-Control-Allow-Origin":"https://web.telegram.org",
-        "Cache-Control":"private, max-age=300"
+        "Cache-Control":"no-store, max-age=0",
+        "Referrer-Policy":"no-referrer",
+        "X-Content-Type-Options":"nosniff",
+        "Content-Security-Policy":"sandbox"
       })
 
 _web_candidates=[]
