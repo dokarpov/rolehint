@@ -109,17 +109,16 @@ def classify(job,analysis,prefs,policy=None):
     p=normalize_policy(policy);constraints=analysis.get("constraints") or {};hard=list((analysis.get("constraint_evaluation") or {}).get("hard") or []);unknown=list((analysis.get("constraint_evaluation") or {}).get("unknown") or [])
     extra_hard,extra_verify,spread=hard_policy_checks(job,prefs,p,constraints);hard+=extra_hard;unknown+=extra_verify;f=friction(job)
     verified=int(analysis.get("verified_count") or 0);must=max(1,int(analysis.get("must_have_count") or 0));gaps=int(analysis.get("gap_count") or 0);coverage=verified/must
-    salary_max=constraints.get("salary_max");salary_min=constraints.get("salary_min");comp=salary_max if salary_max is not None else salary_min;strong_reason=verified>=1 or coverage>=.25
+    salary_max=constraints.get("salary_max");salary_min=constraints.get("salary_min");currency=str(constraints.get("currency") or "").upper();comp=(salary_max if salary_max is not None else salary_min) if currency=="EUR" else None;strong_reason=verified>=1 or coverage>=.25
     if hard:tier="BLOCKED"
     elif unknown and any("Remote/office" in x or "location" in x.lower() for x in unknown):tier="VERIFY"
-    elif comp is not None and float(comp)<float(p["p2_salary_floor"]):tier="BLOCKED";hard.append("Published compensation is below the current funnel reach.")
     elif comp is not None and float(comp)>=float(p["strong_salary"]) and coverage>=float(p["p1_coverage"]):tier="P0" if coverage>=float(p["p0_coverage"]) and gaps<=1 else "P1"
     elif coverage>=float(p["p1_coverage"]) and gaps<=2:tier="P1"
-    elif (comp is None or float(comp)>=float(p["p2_salary_floor"])) and (coverage>=float(p["p2_coverage"]) or verified>=int(p["p2_min_verified"])):tier="P2"
+    elif coverage>=float(p["p2_coverage"]) or verified>=int(p["p2_min_verified"]):tier="P2"
     elif f["low_cost"] and strong_reason:tier="LOW_COST"
     else:tier="HOLD"
     penalty=(4 if comp is None else 0)+(5*min(gaps,2))+(8 if analysis.get("review_count") else 0);value=max(0,round(100*coverage-penalty+(10 if comp and float(comp)>=float(p["strong_salary"]) else 0),1))
-    return {"tier":tier,"hard_blockers":hard,"verify_items":unknown,"role_sprawl":spread,"estimated_minutes":f["estimated_minutes"],"application_friction":f,"value_score":value,"strong_reason":strong_reason,"breadth":p["breadth"]}
+    return {"tier":tier,"hard_blockers":hard,"verify_items":unknown,"role_sprawl":spread,"estimated_minutes":f["estimated_minutes"],"application_friction":f,"value_score":value,"strong_reason":strong_reason,"breadth":p["breadth"],"salary_signal":{"currency":currency or None,"observed_published_max":salary_max,"target_eur":p["strong_salary"],"below_target":comp is not None and float(comp)<float(p["strong_salary"]),"note":"Salary changes ranking, never blocks a role unless the user explicitly sets a hard floor. Non-EUR published bands are not numerically compared to EUR targets."}}
 
 def _bounded_allocate(total,weights,mins,maxs):
     out={k:int(mins[k]) for k in weights};remaining=max(0,int(total)-sum(out.values()))
