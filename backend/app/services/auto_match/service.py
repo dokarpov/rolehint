@@ -4,6 +4,7 @@ from ..job_ingest import fetch_job
 from ..jobs import normalize
 from ..pack_proposal import extract_requirements, propose
 from ..funnel import classify, submission_candidate
+from ..market_compensation import observed_compensation
 
 
 def _lower(x): return str(x or "").lower()
@@ -109,7 +110,8 @@ class AutoMatchService:
         if not reqs:return {"ok":False,"source_url":job.get("source_url"),"fetch_status":"parsed_no_requirements","error":"The vacancy was parsed, but no defensible requirements were extracted.","retryable":False}
         evidence=self.product.user_evidence(user_id);proposal=propose(job,reqs,evidence);constraints=extract_constraints(job);prefs=self.product.preferences(user_id);ce=evaluate_constraints(constraints,prefs)
         fit=evidence_assessment(reqs,proposal)
-        base_analysis={**fit,"company":job.get("company"),"title":job.get("title"),"constraints":constraints,"constraint_evaluation":ce,
+        market=observed_compensation(job, [*self.product.jobs(user_id), job])
+        base_analysis={**fit,"compensation_market":market,"company":job.get("company"),"title":job.get("title"),"constraints":constraints,"constraint_evaluation":ce,
           "requirements":reqs,"proposal":proposal,"parser":{"source":job.get("source"),"method":job.get("fetch_method") or job.get("source"),"status":"ok"}}
         funnel=classify(job,base_analysis,prefs,self.product.funnel_policy(user_id))
         tier=funnel["tier"]
