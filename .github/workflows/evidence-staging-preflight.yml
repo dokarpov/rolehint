@@ -1,0 +1,25 @@
+name: Evidence staging HTTPS preflight (read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      staging_url:
+        description: "HTTPS URL of the NEW isolated Railway staging service (never production/legacy staging)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  http-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ROLEHINT_STAGING_URL: ${{ inputs.staging_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reject production targets; verify hosted Evidence Inbox and OAuth/MCP denial
+        run: python scripts/evidence_staging_preflight.py

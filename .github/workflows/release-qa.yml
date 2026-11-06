@@ -7,7 +7,7 @@ on:
       - 'webapp/**'
       - '.github/workflows/release-qa.yml'
   push:
-    branches: [main, feature/value-first-onboarding-20261021]
+    branches: [main, feature/value-first-onboarding-20261021, feature/evidence-cloud-inbox-20261102]
     paths:
       - 'site/**'
       - 'webapp/**'
@@ -23,20 +23,28 @@ on:
       - 'tests/contrast-qa.mjs'
 jobs:
   qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate Evidence Inbox inline JavaScript syntax
+        run: node site/check-evidence-script.mjs
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.58.2
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
       - name: Run responsive regression checks against local site
         run: node site/qa-release.mjs
       - name: Test current guest CV/role, privacy, results and auth UI in six viewports
         run: node site/qa-webapp.mjs
+      - name: Verify mobile Evidence Inbox browser UX with private API fixtures
+        run: node site/qa-evidence.mjs
+      - name: Verify Evidence Inbox in WebKit (Safari engine approximation)
+        env:
+          ROLEHINT_BROWSER_ENGINE: webkit
+        run: node site/qa-evidence.mjs
       - name: Enforce contrast for marketing and Telegram onboarding
         run: node tests/contrast-qa.mjs

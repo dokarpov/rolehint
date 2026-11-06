@@ -22,6 +22,26 @@ jobs:
       - run: python -m pytest -q tests/test_public_beta.py tests/test_telegram_auth_release.py tests/test_free_discovery_worker.py tests/test_settings_persistence.py tests/test_web_identity.py tests/test_web_cv.py tests/test_web_telegram_login.py tests/test_web_release.py
       - name: Anonymous CV privacy and SQLite backup/integrity regressions
         run: python -m pytest -q backend/tests/test_anonymous_jobs.py backend/tests/test_sqlite_integrity.py backend/tests/test_delivery_ledger.py
+      - name: Private Evidence Inbox and OAuth PKCE integrity regressions
+        run: python -m pytest -q tests/test_evidence_cloud.py tests/test_evidence_oauth.py
+      - name: Evidence Inbox restart, backup, FTS and concurrency gate
+        run: python -m pytest -q tests/test_evidence_storage_recovery.py
+      - name: Hosted MCP OAuth protected-resource smoke
+        env:
+          CFA_REMOTE_MCP_ENABLED: "1"
+          CFA_WEB_APP_URL: https://rolehint.example
+          CFA_DATA_DIR: /tmp/rolehint-ci-evidence-mcp
+        run: python -m pytest -q tests/test_evidence_remote_mcp.py
+      - name: Staging URL guard and HTTP preflight security regressions
+        run: python -m pytest -q tests/test_evidence_staging_preflight.py
+      - name: Assert every required Evidence Inbox file is committed
+        run: python scripts/verify_rolehint_evidence_release.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evidence-release-inventory-${{ github.sha }}
+          path: artifacts/rolehint-evidence-release-inventory.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Verify at least one real public ATS vacancy
         run: python -m pytest -q tests/test_real_job_sources.py
   deployed-smoke:

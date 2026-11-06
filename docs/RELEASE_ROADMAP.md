@@ -1,5 +1,8 @@
 # RoleHint — iterative implementation roadmap
 
+> **Current P0–P2 execution priority register (4 Nov 2026):** [release priorities, evidence status, crosswalk and ordered gates](RELEASE_PRIORITIES_P0_P2_2026-11-04.md). The 200-case matrix contains 133 P0, 64 P1 and 3 P2 **test scenarios**, not 200 separate implementation tickets. Older October defect snapshots below must be reconciled against current staging code before being carried forward. This document remains the broader implementation plan; the linked register is the current release ordering.
+
+
 > **Detailed audit update (2026-10-21):** [source-verified flow/defect audit](UX_SERVICE_AUDIT_V2_2026-10-21.md) · [200-case corner-case matrix](UX_EDGE_CASE_MATRIX_2026-10-21.md) · [sequenced implementation backlog](UX_IMPLEMENTATION_BACKLOG_2026-10-21.md). The shorter plan below is retained as an overview; acceptance depends on the linked detailed gates. No new webapp deployment was made.
 
 

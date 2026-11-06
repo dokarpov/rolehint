@@ -1,5 +1,8 @@
 # RoleHint — implementation backlog with dependency and acceptance contracts
 
+> **Historical 21 October baseline.** The current implementation status and priority ordering are maintained in [P0–P2 register, 4 Nov](RELEASE_PRIORITIES_P0_P2_2026-11-04.md). Several findings here have since changed: for example anonymous job preview now posts to `/web-api/anonymous/matches` instead of putting CV terms in a GET URL, and Evidence Inbox step disclosure was staged and CI-tested on 4 Nov. Do not close core job, privacy or authentication gates solely because the browser was refactored.
+
+
 > **SQL integrity dependency (2026-10-21):** [verified current SQLite architecture and migration policy](architecture/SQL_DATA_INTEGRITY_PLAN_2026-10-21.md) · [48 database cases](architecture/SQL_DATA_INTEGRITY_TEST_MATRIX_2026-10-21.md). Before E06/E08 can qualify as live results, close DB-0/DB-1: durable isolated staging, schema migrations/restore proof, pure matching before persistence, and atomic ten-free lifetime delivered-valid-job ledger with paid SKU-specific bypass. Before E09/E10 public tracking claims, close DB-2: application/event idempotency, cross-process races, FTS and CV-to-pack deletion consistency. PostgreSQL migration is an optional evidenced DB-3, **not** a prerequisite to fix present UI or race bugs.
 
 **2026-10-21** · **Status:** approved directions translated into engineering work proposals, not deployed or tested.
