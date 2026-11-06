@@ -61,7 +61,8 @@ def _extract(job):
     if not (urlsplit(str(url)).hostname): return None
     return {"role_family": _family(title), "seniority": _seniority(title),
             "region": _region(loc), "currency": currency,
-            "midpoint": (lo + hi) / 2, "lower": lo, "upper": hi, "url": str(url).split("?")[0]}
+            "midpoint": (lo + hi) / 2, "lower": lo, "upper": hi, "url": str(url).split("?")[0],
+            "employer_key": (urlsplit(str(url)).path.split("/")[1].lower() if urlsplit(str(url)).hostname in ("jobs.ashbyhq.com", "boards.greenhouse.io", "job-boards.greenhouse.io", "jobs.lever.co") and len(urlsplit(str(url)).path.split("/"))>1 else urlsplit(str(url)).hostname.lower())}
 
 
 def observed_compensation(target, listings, min_comparables=5):
@@ -82,13 +83,14 @@ def observed_compensation(target, listings, min_comparables=5):
         seen.add(d["url"])
         observed.append(d)
     count = len(observed)
+    employer_count = len({r["employer_key"] for r in observed})
     base = {"status": "insufficient_data", "comparable_count": count, "currency": currency,
-            "role_family": family, "seniority": seniority, "region": region,
+            "role_family": family, "seniority": seniority, "region": region, "distinct_employers": employer_count,
             "method": "Public listing bands, same role-family/seniority/geography/currency; one unique source URL per observation.",
             "limitations": "Convenience sample, not a labor-market median. Posting recency, employment structure, benefits, self-selection and actual offers are unverified. No annualization or foreign-exchange assumptions.",
             "source_urls": [r["url"] for r in observed]}
-    if count < min_comparables:
-        base["reason"] = f"Only {count} comparable disclosed annual salary bands; need at least {min_comparables} for a descriptive midpoint."
+    if count < min_comparables or employer_count < 3:
+        base["reason"] = f"Only {count} comparable bands from {employer_count} employers; require at least {min_comparables} listings and 3 independent employers."
         return base
     mids = [r["midpoint"] for r in observed]
     base.update(status="descriptive_only", median_listed_midpoint=median(mids),
