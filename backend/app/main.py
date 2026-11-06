@@ -33,17 +33,31 @@ from .web_identity import init_routes as web_identity_routes
 
 app=FastAPI(title="Career Fit Agent API",version="1.8.0")
 
+def _allowed_beta_path(path: str) -> bool:
+    """Small, reviewed HTTP surface. All legacy handlers remain closed on every deployment."""
+    return (
+        path in ("/health", "/open-bot", "/miniapp", "/webapp", "/telegram/auth",
+                 "/oauth/google/callback", "/oauth/github/callback")
+        or path.startswith(("/miniapp/", "/me/", "/web-api/", "/webapp/",
+                            "/internal/telegram/", "/downloads/"))
+    )
+
+
 @app.middleware("http")
 async def beta_access_guard(request: Request, call_next):
-    """Do not expose legacy unauthenticated endpoints while the public beta is being secured."""
-    if os.getenv("CFA_PUBLIC_BETA_LOCK", "0") == "1":
-        path=request.url.path
-        if not (path in ("/health","/open-bot") or (path == "/miniapp" or path.startswith("/miniapp/")) or path.startswith("/me/") or path.startswith("/web-api/") or path == "/webapp" or path.startswith("/webapp/") or path == "/telegram/auth" or path in ("/oauth/google/callback", "/oauth/github/callback") or path.startswith("/internal/telegram/")):
-            return Response(
-                content='{"detail":"RoleHint backend is being prepared for private beta"}',
-                media_type="application/json",
-                status_code=503,
-            )
+    """Deny legacy unauthenticated routes regardless of environment flags.
+
+    The old CFA_PUBLIC_BETA_LOCK could be unset or accidentally set to 0 on a
+    publicly reachable server. No environment variable now disables this boundary.
+    Internal bot requests and export downloads retain their own secret/token checks.
+    """
+    if not _allowed_beta_path(request.url.path):
+        return Response(
+            content='{"detail":"RoleHint legacy API is unavailable"}',
+            media_type="application/json",
+            status_code=503,
+            headers={"Cache-Control": "no-store"},
+        )
     return await call_next(request)
 
 DATA_DIR=Path(os.getenv("CFA_DATA_DIR", Path(__file__).resolve().parents[2]/"data"))
