@@ -8,7 +8,7 @@ def row(i, *, title="Senior Product Manager", location="Remote Spain",
     return {
         "title": title, "location": location, "currency": currency,
         "salary_min": lo, "salary_max": hi, "salary_period": period,
-        "source_url": f"https://jobs.ashbyhq.com/employer/{i}"
+        "source_url": f"https://jobs.ashbyhq.com/company{i}/{i}"
     }
 
 
@@ -56,6 +56,7 @@ def test_only_strictly_comparable_disclosed_bands_are_used():
     assert out["comparable_count"] == 5
     assert out["median_listed_midpoint"] == 52000
     assert len(out["source_urls"]) == 5
+    assert out["distinct_employers"] == 5
     assert out["recommendation"].startswith("Do not turn")
 
 
@@ -64,3 +65,13 @@ def test_zero_salary_observations_never_invent_a_number():
     assert out["status"] == "insufficient_data"
     assert out["comparable_count"] == 0
     assert "median_listed_midpoint" not in out
+
+
+def test_multiple_roles_from_one_employer_do_not_pretend_to_be_the_market():
+    jobs = [row(i) for i in range(5)]
+    for job in jobs:
+        job["source_url"] = job["source_url"].replace("company"+str(job["source_url"].split("/")[-1]), "singlecompany")
+    out = observed_compensation(row("target"), jobs)
+    assert out["comparable_count"] == 5
+    assert out["distinct_employers"] == 1
+    assert out["status"] == "insufficient_data"
