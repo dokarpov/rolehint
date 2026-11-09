@@ -30,21 +30,11 @@ from .services.autopilot import EvidenceAutopilot, ensure_search_profiles
 from .services.funnel import weekly_plan, DEFAULT_POLICY, PACE_PRESETS, BREADTH_PRESETS, normalize_policy, submission_candidate
 from .services.connectors.gmail import GmailConnector, parse_job_email
 from .web_identity import init_routes as web_identity_routes
+from .http_boundary import beta_access_guard
 
 app=FastAPI(title="Career Fit Agent API",version="1.8.0")
 
-@app.middleware("http")
-async def beta_access_guard(request: Request, call_next):
-    """Do not expose legacy unauthenticated endpoints while the public beta is being secured."""
-    if os.getenv("CFA_PUBLIC_BETA_LOCK", "0") == "1":
-        path=request.url.path
-        if not (path in ("/health","/open-bot") or (path == "/miniapp" or path.startswith("/miniapp/")) or path.startswith("/me/") or path.startswith("/web-api/") or path == "/webapp" or path.startswith("/webapp/") or path == "/telegram/auth" or path in ("/oauth/google/callback", "/oauth/github/callback") or path.startswith("/internal/telegram/")):
-            return Response(
-                content='{"detail":"RoleHint backend is being prepared for private beta"}',
-                media_type="application/json",
-                status_code=503,
-            )
-    return await call_next(request)
+app.middleware("http")(beta_access_guard)
 
 DATA_DIR=Path(os.getenv("CFA_DATA_DIR", Path(__file__).resolve().parents[2]/"data"))
 DATA_DIR.mkdir(parents=True,exist_ok=True)
@@ -663,7 +653,10 @@ def download_export(token:str):
       headers={
         "Content-Disposition":f'attachment; filename="{item["file_name"]}"',
         "Access-Control-Allow-Origin":"https://web.telegram.org",
-        "Cache-Control":"private, max-age=300"
+        "Cache-Control":"no-store, max-age=0",
+        "Referrer-Policy":"no-referrer",
+        "X-Content-Type-Options":"nosniff",
+        "Content-Security-Policy":"sandbox"
       })
 
 _web_candidates=[]
