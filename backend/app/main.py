@@ -30,35 +30,11 @@ from .services.autopilot import EvidenceAutopilot, ensure_search_profiles
 from .services.funnel import weekly_plan, DEFAULT_POLICY, PACE_PRESETS, BREADTH_PRESETS, normalize_policy, submission_candidate
 from .services.connectors.gmail import GmailConnector, parse_job_email
 from .web_identity import init_routes as web_identity_routes
+from .http_boundary import beta_access_guard
 
 app=FastAPI(title="Career Fit Agent API",version="1.8.0")
 
-def _allowed_beta_path(path: str) -> bool:
-    """Small, reviewed HTTP surface. All legacy handlers remain closed on every deployment."""
-    return (
-        path in ("/health", "/open-bot", "/miniapp", "/webapp", "/telegram/auth",
-                 "/oauth/google/callback", "/oauth/github/callback")
-        or path.startswith(("/miniapp/", "/me/", "/web-api/", "/webapp/",
-                            "/internal/telegram/", "/downloads/"))
-    )
-
-
-@app.middleware("http")
-async def beta_access_guard(request: Request, call_next):
-    """Deny legacy unauthenticated routes regardless of environment flags.
-
-    The old CFA_PUBLIC_BETA_LOCK could be unset or accidentally set to 0 on a
-    publicly reachable server. No environment variable now disables this boundary.
-    Internal bot requests and export downloads retain their own secret/token checks.
-    """
-    if not _allowed_beta_path(request.url.path):
-        return Response(
-            content='{"detail":"RoleHint legacy API is unavailable"}',
-            media_type="application/json",
-            status_code=503,
-            headers={"Cache-Control": "no-store"},
-        )
-    return await call_next(request)
+app.middleware("http")(beta_access_guard)
 
 DATA_DIR=Path(os.getenv("CFA_DATA_DIR", Path(__file__).resolve().parents[2]/"data"))
 DATA_DIR.mkdir(parents=True,exist_ok=True)
