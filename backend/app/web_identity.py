@@ -324,7 +324,7 @@ def init_routes(product):
         insights.append({"kind":"verification","message":"Imported CV statements are self-reported, not independently verified. Review them before tailoring an application."})
         role_titles=["Product Manager","Product Designer","Software Engineer","Data Analyst","Project Manager","UX Researcher","Marketing Manager","Customer Success Manager"]
         suggested_roles=[title for title in role_titles if title.lower() in content[:5000].lower()][:4]
-        response=ResponseJSON({"file_name":name,"evidence":evidence,"insights":insights,"suggested_roles":suggested_roles,
+        response=ResponseJSON({"file_name":name,"text":content,"evidence":evidence,"insights":insights,"suggested_roles":suggested_roles,
                                "verification_level":"self-reported","saved":False,
                                "next_step":"Sign in only when you want to save and resume your analysis."})
         response.headers["Cache-Control"]="no-store"
