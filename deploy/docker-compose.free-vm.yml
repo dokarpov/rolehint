@@ -1,0 +1,33 @@
+services:
+  rolehint:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    command: ["sh", "./start_railway.sh"]
+    env_file:
+      - ../.env.vm
+    environment:
+      CFA_DATA_DIR: /app/data
+      PORT: "8000"
+    volumes:
+      - ../rolehint-data:/app/data
+    restart: unless-stopped
+    expose:
+      - "8000"
+  caddy:
+    image: caddy:2
+    env_file:
+      - ../.env.vm
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - rolehint_caddy_data:/data
+      - rolehint_caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - rolehint
+    restart: unless-stopped
+volumes:
+  rolehint_caddy_data:
+  rolehint_caddy_config:
