@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test",
     "eval": "node evals/run-evals.js",
-    "eval:live": "node evals/run-live-batch.js"
+    "eval:live": "node evals/run-live-batch.js",
+    "test:first-value": "node tests/first-value-dom.mjs"
   },
   "license": "MIT",
   "engines": {
@@ -23,5 +24,8 @@
     "product",
     "funnel"
   ],
-  "private": false
+  "private": false,
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
 }
