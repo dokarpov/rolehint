@@ -63,7 +63,7 @@ def verify_snapshot(folder: Path, restore_test: bool = True) -> dict:
             raise ValueError(f"SHA-256 differs from manifest: {name}")
         _integrity(db_file)
         if restore_test:
-            with tempfile.TemporaryDirectory(prefix="rolehint-restore-check-") as d:
+            with tempfile.TemporaryDirectory(prefix="rolehint-restore-check-", dir=folder) as d:
                 restored = Path(d) / name
                 shutil.copy2(db_file, restored)
                 _integrity(restored)
