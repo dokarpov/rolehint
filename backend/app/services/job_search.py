@@ -1,6 +1,7 @@
 import asyncio
 from .jobs import dedupe
 from .job_sources.adzuna import AdzunaSource
+from .job_sources.jsearch import JSearchSource
 from .job_sources.jooble import JoobleSource
 from .job_sources.ashby import AshbyBoardSource
 from .job_sources.lever import LeverBoardSource
@@ -13,6 +14,7 @@ class JobSearchService:
     def __init__(self, ashby_boards=None, lever_sites=None, greenhouse_boards=None, workable_accounts=None, smartrecruiters_companies=None, career_site_urls=None):
         self.sources = {
           "adzuna": AdzunaSource(),
+          "jsearch": JSearchSource(),
           "jooble": JoobleSource(),
           "ashby": AshbyBoardSource(ashby_boards or []),
           "lever": LeverBoardSource(lever_sites or []),

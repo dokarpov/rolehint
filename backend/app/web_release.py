@@ -4,12 +4,20 @@ Do not claim auto-submission, independently verified CV evidence, or a sourced s
 from __future__ import annotations
 import hashlib, os, re, time
 from urllib.parse import urlsplit
-from fastapi import HTTPException, Request
-from fastapi.responses import PlainTextResponse
+from fastapi import HTTPException, Request, UploadFile, File
+from fastapi.responses import PlainTextResponse, Response, HTMLResponse
 from .services.job_search import JobSearchService
 from .services.auto_match import AutoMatchService
 from .services.auto_match.service import extract_constraints, evaluate_constraints
 from .services.application_packs import markdown as pack_markdown
+from .services.application_packs.editorial import (
+    validate_profile, from_user_cv_html, cv_html, letter_html,
+    pdf_from_html, docx_from_html_data
+)
+from .services.application_packs.render import safe_filename
+from .services.application_tracking.board import build_application_board
+from .services.job_ingest.fetch import fetch_greenhouse, fetch_lever, fetch_ashby, canonical_url
+from .services.job_sources.freshness import assess as assess_freshness, can_recheck, same_posting
 
 def _envlist(name):
     return [x.strip() for x in os.getenv(name,"").split(",") if x.strip()]
@@ -31,6 +39,8 @@ def is_qualified(job,prefs,contractor_only):
         return False,"Not a directly supported employer ATS source"
     if not (job.get("source_job_id") or job.get("canonical_key")):
         return False,"Missing stable ATS identity"
+    if assess_freshness(job)["state"]=="closed":
+        return False,"Employer posting has passed its published closing date"
     if evaluate_constraints(extract_constraints(job),prefs).get("hard"):
         return False,"Hard eligibility blocker"
     if contractor_only and contract_signal(job)=="incompatible":
@@ -40,6 +50,16 @@ def is_qualified(job,prefs,contractor_only):
 def bind_web_release(router,product,require_user,check_origin,search_service=None,matcher=None):
     store=product.conn
     store.executescript("""
+    CREATE TABLE IF NOT EXISTS web_document_profiles(
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      profile_json TEXT NOT NULL,
+      updated_at REAL NOT NULL);
+    CREATE TABLE IF NOT EXISTS web_document_drafts(
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      job_id TEXT NOT NULL, interest TEXT NOT NULL DEFAULT '',
+      body TEXT NOT NULL DEFAULT '', version INTEGER NOT NULL DEFAULT 1,
+      approved INTEGER NOT NULL DEFAULT 0, updated_at REAL NOT NULL,
+      PRIMARY KEY(user_id,job_id));
     CREATE TABLE IF NOT EXISTS web_search_constraints(
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       contractor_only INTEGER NOT NULL DEFAULT 0, updated_at REAL NOT NULL);
@@ -48,6 +68,9 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
       job_id TEXT NOT NULL, approved_at REAL NOT NULL,
       state TEXT NOT NULL DEFAULT 'approved_handoff', updated_at REAL NOT NULL,
       PRIMARY KEY(user_id,job_id));
+    CREATE TABLE IF NOT EXISTS web_manual_capture_attempts(
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      last_attempt REAL NOT NULL);
     CREATE TABLE IF NOT EXISTS web_discovery_attempts(
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       last_attempt REAL NOT NULL);
@@ -80,6 +103,219 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
                 j=jobs.get(e.get("job_id"))
                 if j:employer_rejections.add(j["company"].casefold())
         return submissions,applied,employer_rejections
+
+    @router.post("/capture-ats-url")
+    async def capture_ats_url(request:Request):
+        """Safely capture a direct employer ATS posting from a user-supplied URL.
+
+        Only exact official ATS hosts are accepted; no arbitrary HTML fetches,
+        redirects to untrusted domains, browser automation, or auto-submission.
+        """
+        check_origin(request)
+        uid=require_user(request)
+        data=await request.json()
+        url=str(data.get("url") or "").strip()
+        if not 20 <= len(url) <= 1600:
+            raise HTTPException(422,"Paste a direct employer ATS job URL")
+        try:
+            parsed=urlsplit(url)
+            if parsed.port is not None or parsed.username or parsed.password:
+                raise ValueError("Credentials and ports are not allowed")
+        except ValueError:
+            raise HTTPException(422,"Use an HTTPS employer ATS URL without credentials or ports")
+        providers={
+            "job-boards.greenhouse.io":fetch_greenhouse,
+            "boards.greenhouse.io":fetch_greenhouse,
+            "jobs.ashbyhq.com":fetch_ashby,
+            "jobs.lever.co":fetch_lever,
+            "jobs.eu.lever.co":fetch_lever,
+        }
+        provider=providers.get(parsed.hostname or "")
+        if parsed.scheme!="https" or not provider or not parsed.path.strip("/"):
+            raise HTTPException(422,"Supported sources: Greenhouse, Ashby and Lever employer job pages only")
+        # Existing saved URL is returned before rate limit; no new quota debit.
+        canonical=canonical_url(url)
+        existing_jobs=product.jobs(uid)
+        prior=next((j for j in existing_jobs
+                    if j.get("source_url") and canonical_url(j["source_url"])==canonical),None)
+        if prior:
+            return {"added":False,"duplicate":True,"job_id":prior["job_id"],
+                    "message":"Already saved. Open it in your applications."}
+        if len(existing_jobs)>=10 and not product.entitlement(uid):
+            raise HTTPException(403,"The ten free opportunities have already been delivered")
+        last=store.execute(
+            "SELECT last_attempt FROM web_manual_capture_attempts WHERE user_id=?",(uid,)).fetchone()
+        now=time.time()
+        if last and now-last["last_attempt"]<30:
+            raise HTTPException(429,"Please wait 30 seconds between new employer URL imports")
+        store.execute(
+            "INSERT INTO web_manual_capture_attempts VALUES(?,?) "
+            "ON CONFLICT(user_id) DO UPDATE SET last_attempt=excluded.last_attempt",(uid,now))
+        store.commit()
+        try:
+            job=await provider(url)
+        except Exception:
+            raise HTTPException(503,"Employer job provider temporarily unavailable")
+        if not job or job.get("fetch_status")!="ok":
+            raise HTTPException(422,"Employer posting could not be verified. Nothing was saved.")
+        eligible,reason=is_qualified(job,product.preferences(uid),contractor_only(uid))
+        if not eligible:
+            raise HTTPException(422,reason or "This opening does not match your saved eligibility rules")
+        job_id=f"{job['source']}:{job['source_job_id']}"
+        existing=product.job(uid,job_id)
+        if existing:
+            return {"added":False,"duplicate":True,"job_id":job_id,
+                    "message":"Already saved. Open it in your applications."}
+        # Reuse the existing requirement -> evidence -> constraints pipeline.
+        # CV facts stay self-reported; they are never silently marked verified.
+        result=match.analyze_job(uid,job)
+        if not result.get("ok"):
+            raise HTTPException(422,"The posting could not be analyzed reliably; nothing was saved")
+        stored=result["job"]
+        return {"added":True,"duplicate":False,"job_id":stored["job_id"],
+                "company":stored["company"],"title":stored["title"],
+                "message":"Employer posting saved for human review. Nothing has been submitted."}
+
+
+    def _editorial(uid):
+        row=store.execute("SELECT profile_json FROM web_document_profiles WHERE user_id=?",(uid,)).fetchone()
+        return __import__("json").loads(row["profile_json"]) if row else None
+
+    def _draft(uid,job_id):
+        row=store.execute("SELECT * FROM web_document_drafts WHERE user_id=? AND job_id=?",
+                          (uid,job_id)).fetchone()
+        return {"interest":row["interest"],"body":row["body"],"approved":bool(row["approved"]),
+                "version":row["version"]} if row else {"interest":"","body":"","approved":False,"version":0}
+
+    def _save_editorial(uid,raw):
+        from json import dumps
+        try:profile=validate_profile(raw)
+        except ValueError as err:raise HTTPException(422,str(err))
+        store.execute("""INSERT INTO web_document_profiles VALUES(?,?,?)
+          ON CONFLICT(user_id) DO UPDATE SET profile_json=excluded.profile_json,updated_at=excluded.updated_at""",
+          (uid,dumps(profile),time.time()));store.commit()
+        return profile
+
+    @router.get("/editorial-profile")
+    def editorial_profile(request:Request):
+        uid=require_user(request)
+        profile=_editorial(uid)
+        return {"exists":bool(profile),"profile":profile}
+
+    @router.put("/editorial-profile")
+    async def save_editorial_profile(request:Request):
+        check_origin(request);uid=require_user(request)
+        data=await request.json()
+        return {"profile":_save_editorial(uid,data),"saved":True}
+
+    @router.post("/editorial-profile/import-html")
+    async def import_editorial_profile(request:Request,file:UploadFile=File(...)):
+        check_origin(request);uid=require_user(request)
+        if not str(file.filename or "").lower().endswith((".html",".htm")):
+            raise HTTPException(415,"Upload one of your existing editorial HTML CV templates")
+        raw=await file.read(1_200_001)
+        await file.close()
+        if len(raw)>1_200_000:raise HTTPException(413,"Template is too large")
+        try:profile=from_user_cv_html(raw.decode("utf-8"))
+        except (UnicodeError,ValueError) as err:raise HTTPException(422,str(err))
+        # Always require renewed approval after import or modification.
+        profile["approved"]=False
+        saved=_save_editorial(uid,profile)
+        return {"profile":saved,"saved":True,"requires_review":True}
+
+    @router.get("/jobs/{job_id}/documents/draft")
+    def get_editorial_draft(request:Request,job_id:str):
+        uid=require_user(request)
+        if not product.job(uid,job_id):raise HTTPException(404,"Opportunity not found")
+        return _draft(uid,job_id)
+
+    @router.put("/jobs/{job_id}/documents/draft")
+    async def save_editorial_draft(request:Request,job_id:str):
+        check_origin(request);uid=require_user(request)
+        if not product.job(uid,job_id):raise HTTPException(404,"Opportunity not found")
+        data=await request.json()
+        interest=str(data.get("interest") or "").strip()[:650]
+        body=str(data.get("body") or "").strip()[:4500]
+        approved=data.get("approved") is True
+        if approved and not (interest or body):
+            raise HTTPException(422,"Write a genuine reason for this role before approving the letter")
+        store.execute("""INSERT INTO web_document_drafts VALUES(?,?,?,?,?,?,?)
+          ON CONFLICT(user_id,job_id) DO UPDATE SET
+            interest=excluded.interest,body=excluded.body,version=web_document_drafts.version+1,
+            approved=excluded.approved,updated_at=excluded.updated_at""",
+          (uid,job_id,interest,body,1,int(approved),time.time()))
+        store.commit()
+        return _draft(uid,job_id)
+
+    @router.get("/jobs/{job_id}/documents/preview")
+    def preview_editorial_document(request:Request,job_id:str,kind:str="cv"):
+        uid=require_user(request)
+        job=product.job(uid,job_id)
+        if not job:raise HTTPException(404,"Opportunity not found")
+        if kind not in {"cv","letter"}:raise HTTPException(422,"Choose CV or letter")
+        profile=_editorial(uid)
+        if not profile:raise HTTPException(409,"Import or create your editorial profile first")
+        pack=product.application_pack(uid,job_id,create=False)
+        evidence=(pack or {}).get("data",{}).get("proof_cards") or []
+        draft=_draft(uid,job_id)
+        html=(cv_html(profile,job,evidence) if kind=="cv"
+              else letter_html(profile,job,evidence,draft["interest"],draft["body"]))
+        return HTMLResponse(html,headers={"Cache-Control":"private, no-store",
+                       "Content-Security-Policy":"default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; sandbox"})
+
+    @router.post("/jobs/{job_id}/documents/export")
+    async def export_editorial_document(request:Request,job_id:str):
+        check_origin(request);uid=require_user(request)
+        job=product.job(uid,job_id)
+        if not job:raise HTTPException(404,"Opportunity not found")
+        body=await request.json()
+        kind=body.get("kind");fmt=body.get("format")
+        if kind not in {"cv","letter"} or fmt not in {"html","pdf","docx"}:
+            raise HTTPException(422,"Choose CV or letter and HTML, PDF or DOCX")
+        profile=_editorial(uid)
+        if not profile or not profile.get("approved"):
+            raise HTTPException(409,"Review and approve your editable profile before exporting")
+        if not profile.get("name") or not profile.get("email") or not profile.get("experiences"):
+            raise HTTPException(422,"Name, email and at least one experience entry are required")
+        draft=_draft(uid,job_id)
+        if kind=="letter" and not draft["approved"]:
+            raise HTTPException(409,"Review and approve this job-specific cover letter first")
+        if body.get("approved") is not True:
+            raise HTTPException(409,"Explicitly approve this export")
+        pack=product.application_pack(uid,job_id,create=False)
+        verified=(pack or {}).get("data",{}).get("proof_cards") or []
+        html=(cv_html(profile,job,verified) if kind=="cv" else
+              letter_html(profile,job,verified,draft["interest"],draft["body"]))
+        filename=safe_filename(job["company"],job["title"],fmt)
+        if fmt=="html":
+            payload=html.encode("utf-8");mime="text/html; charset=utf-8"
+        elif fmt=="pdf":
+            try:payload=pdf_from_html(html)
+            except ValueError as err:raise HTTPException(422,str(err))
+            except RuntimeError:raise HTTPException(503,"PDF renderer is unavailable")
+            mime="application/pdf"
+        else:
+            payload=docx_from_html_data(profile,job,kind,verified,draft["interest"],draft["body"])
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        return Response(content=payload,media_type=mime,headers={
+            "Content-Disposition":f'attachment; filename="{filename}"',
+            "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"
+        })
+
+    @router.get("/application-board")
+    def application_board(request:Request):
+        """Read-only, user-scoped pipeline; opening an ATS form is never a submission."""
+        uid=require_user(request)
+        # These queries intentionally do not join across users and do not
+        # return raw CVs, application-pack contents or connector credentials.
+        handoffs={r["job_id"]:dict(r) for r in store.execute(
+            "SELECT job_id,state,approved_at FROM web_application_handoffs WHERE user_id=?",
+            (uid,)).fetchall()}
+        packs={r["job_id"]:dict(r) for r in store.execute(
+            "SELECT job_id,version,updated_at FROM application_packs WHERE user_id=?",
+            (uid,)).fetchall()}
+        return build_application_board(
+            product.jobs(uid), product.submissions(uid), handoffs, packs)
 
     @router.get("/release-state")
     def release_state(request:Request):
@@ -145,6 +381,36 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
         return {"added":count,"remaining":max(0,10-len(product.jobs(uid))),
                 "message":("New live jobs were found." if count else "No new eligible ATS vacancies found. Your unused allowance remains.")}
 
+    @router.post("/jobs/{job_id}/recheck")
+    async def recheck_job(request:Request,job_id:str):
+        check_origin(request);uid=require_user(request)
+        saved=product.job(uid,job_id)
+        if not saved:raise HTTPException(404,"Opportunity not found")
+        raw=saved.get("payload") or {}
+        if not can_recheck(raw):
+            return {"job_id":job_id,**assess_freshness(raw),
+                    "message":"Automatic recheck is only available for direct Greenhouse, Ashby and Lever postings."}
+        prev=raw.get("source_recheck") or {}
+        now=time.time()
+        checked=__import__("datetime").datetime.fromtimestamp(now,__import__("datetime").timezone.utc).isoformat()
+        checked_before=__import__("datetime").datetime.fromisoformat(prev.get("checked_at")) if prev.get("checked_at") else None
+        if checked_before and now-checked_before.timestamp()<120:
+            raise HTTPException(429,"Please wait two minutes between employer rechecks")
+        handlers={"greenhouse":fetch_greenhouse,"lever":fetch_lever,"ashby":fetch_ashby}
+        try:
+            updated=await handlers[raw["source"]](raw["source_url"])
+        except Exception:
+            updated=None
+        state=("verified_open" if updated and updated.get("fetch_status")=="ok"
+               and same_posting(raw,updated) else "unknown")
+        reason=("Direct employer ATS returned the same requisition." if state=="verified_open" else
+                "Employer API did not confirm this exact requisition. Check the original URL.")
+        product.update_job_payload(uid,job_id,{
+            "source_recheck":{"state":state,"checked_at":checked,"reason":reason}
+        })
+        return {"job_id":job_id,"state":state,"checked_at":checked,
+                "reason":reason,"message":reason}
+
     @router.get("/jobs/{job_id}/review")
     def review(request:Request,job_id:str):
         uid=require_user(request);job=product.job(uid,job_id)
@@ -164,7 +430,9 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
                 "contractor_status":contract_signal(raw),
                 "already_submitted":job_id in applied,
                 "employer_rejected_before":job["company"].casefold() in rejections,
-                "freshness":"Retrieved from employer ATS; confirm the vacancy is still open before submitting."}
+                "freshness":assess_freshness(raw)["reason"],
+                "freshness_state":assess_freshness(raw)["state"],
+                "freshness_checked_at":assess_freshness(raw)["checked_at"]}
 
     @router.get("/jobs/{job_id}/pack")
     def get_pack(request:Request,job_id:str):
@@ -196,6 +464,8 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
         check_origin(request);uid=require_user(request)
         job=product.job(uid,job_id)
         if not job:raise HTTPException(404,"Opportunity not found")
+        if assess_freshness(job.get("payload") or {})["state"]=="closed":
+            raise HTTPException(409,"The posting is closed by its published valid-through date")
         url=str(job.get("source_url") or "")
         parsed=urlsplit(url)
         if parsed.scheme!="https" or not parsed.netloc:raise HTTPException(422,"Employer application URL unavailable")

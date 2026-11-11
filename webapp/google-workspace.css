@@ -1,0 +1,16 @@
+/* Minimal privacy-led Google integrations workspace. */
+.google-workspace{scroll-margin-top:24px}
+.google-connection{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:15px 0}
+.google-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+.google-panel{border:1px solid var(--hair);border-radius:8px;padding:17px;min-width:0}
+.google-panel h3{margin:0 0 8px}
+.google-message{padding:11px 0;border-bottom:1px solid var(--hair);display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.google-message strong{font-size:13px;color:var(--ink)}
+.google-message a{font-size:12px;color:var(--sage)}
+.google-event{padding:9px 0;border-bottom:1px solid var(--hair);font-size:12px}
+.google-panel .field{margin:11px 0}
+.google-panel select,.google-panel input[type=datetime-local]{width:100%;max-width:100%;min-height:45px;border:1px solid #bac9bc;border-radius:6px;padding:10px;font:inherit;font-size:14px;color:var(--ink);background:#fff}
+.google-panel .check{margin:10px 0}
+.google-panel .btn{width:100%;margin:7px 0}
+.google-workspace .notice{margin:12px 0}
+@media(max-width:760px){.google-columns{grid-template-columns:1fr}.google-panel{padding:15px}.google-connection .btn{width:100%}}
