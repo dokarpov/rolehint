@@ -15,7 +15,7 @@
   --rh-type-subhead: 1.0625rem;
   --rh-leading-head: 1.11;
   --rh-leading-copy: 1.6;
-  --rh-tracking-head: -0.045em;
+  --rh-tracking-head: -0.022em;
 }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { font-family: var(--rh-font-sans); }
@@ -39,7 +39,7 @@ p { overflow-wrap: break-word; }
 .evidence-item summary small { font-size: 0.75rem; }
 .search-field input { font-size: 0.875rem; }
 @media(max-width:580px) {
-  .hero h1 { font-size: clamp(2.375rem, 10.4vw, 3.25rem); line-height: 1.12; letter-spacing: -0.047em; }
+  .hero h1 { font-size: clamp(2.375rem, 10.4vw, 3.25rem); line-height: 1.12; letter-spacing: -0.022em; }
   .hero-lead { font-size: 1rem; }
   .section-heading h2,.difference h2 { font-size: clamp(1.75rem, 8.25vw, 2.125rem); }
   .steps p,.difference p { font-size: 0.875rem; }
