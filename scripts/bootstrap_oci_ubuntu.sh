@@ -40,7 +40,8 @@ docker compose version >/dev/null
 systemctl enable --now docker
 
 install -d -m 0700 /srv/rolehint
-install -d -m 0700 /srv/rolehint/data
+# Intentionally do NOT create /srv/rolehint/data here: the verified restore
+# helper refuses to overwrite any existing destination, even an empty one.
 git clone --depth 1 --branch chore/free-vm-migration-backup-20261110 \
   https://github.com/dokarpov/rolehint.git /opt/rolehint
 
