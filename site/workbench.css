@@ -1,5 +1,5 @@
 @import url('./tokens.css');
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@500;600;700;800&display=swap');
 /* RoleHint · workspace. Neutral product UI; color indicates actions or genuine uncertainty, not an invented fit score. */
 :root{
  --page:var(--rh-workbench-page);--surface:var(--rh-color-surface);--ink:var(--rh-workbench-ink);--muted:var(--rh-workbench-muted);--quiet:var(--rh-workbench-quiet);
