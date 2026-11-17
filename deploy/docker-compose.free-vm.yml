@@ -10,7 +10,9 @@ services:
       CFA_DATA_DIR: /app/data
       PORT: "8000"
     volumes:
-      - ../rolehint-data:/app/data
+      # Keep user CVs, SQLite and private state OUTSIDE the public Git checkout.
+      # Supply ROLEHINT_HOST_DATA_DIR in .env.vm or use /srv/rolehint/data.
+      - ${ROLEHINT_HOST_DATA_DIR:-/srv/rolehint/data}:/app/data
     restart: unless-stopped
     expose:
       - "8000"
