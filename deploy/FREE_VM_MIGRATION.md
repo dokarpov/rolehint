@@ -12,25 +12,45 @@ No private databases or credentials have been exported and no target VM is conne
 - The connected Railway tools enumerate volumes and variable names but cannot read mounted files, export database bytes, access SSH, or reveal Telegram/OTP/OAuth secret values.
 - Do not delete, repurpose or overwrite either volume. CI passing is not a data backup.
 
-## Blocking dependency: offline Railway data
+## First-choice export: direct CLI volume downloads (no Railway deploy)
 
-The exporter scripts/export_railway_snapshots.py needs an accessible RUNNING container through Railway CLI SSH and file download. It **cannot access the currently offline services**. An automatic redeploy can create billable usage, so do not redeploy without explicit approval of that cost and risk or an approved alternative data-export path from Railway. This connected account has no volume-file transfer action.
+Railway now officially documents direct read-only volume downloads via CLI:
+https://docs.railway.com/cli/volume . This is preferable to SSH because
+it does not require us to start the production backend. **Offline source
+access has not yet been confirmed on the owner's account.** Do not
+start/redeploy any Railway service or delete/move its volumes.
 
-Once Railway access to the live volume becomes available, on an encrypted owner-controlled computer:
+1. On an encrypted owner-controlled computer, install Railway CLI, run
+   `railway login`, and check out this PR branch.
+2. Confirm both source services remain OFFLINE. Never run a raw export
+   during active writes to SQLite.
+3. Run:
 
-1. Install Railway CLI from https://docs.railway.com/cli and authenticate with railway login; configure SSH.
-2. Check out this branch exactly.
-3. Run this command:
+    python3 scripts/export_railway_volumes_offline.py --destination "$HOME/RoleHint-private-backups" --service both
 
-    python3 scripts/export_railway_snapshots.py --destination "$HOME/RoleHint-private-backups" --service both
+The script downloads the **complete original volume directory** for each
+service into separate private folders (including local_secrets.json, nested
+uploads and SQLite WAL files), applies private file permissions, computes
+SHA256 hashes, makes consistent local SQLite backups and checks
+PRAGMA integrity_check plus a test restore. Production and staging volume
+IDs are pinned to the verified Railway environment. No data is uploaded
+anywhere or committed to GitHub.
 
-The exporter uploads a helper to ephemeral /tmp, uses the SQLite online backup API, downloads each service's database snapshots into separate private folders, then verifies size, SHA256, integrity, and a temporary restore. Its offline tests have passed, but it has NOT been executed against Railway.
+If the CLI denies volume access while services are offline, STOP and report
+the exact error **without copying any private data into chat**. The fallback
+online SQLite exporter (scripts/export_railway_snapshots.py) requires a
+running container; an authorized Railway support export or user-approved
+temporary paid redeploy might then be required. Never silently redeploy.
 
-Only top-level SQLite databases are included. Separately preserve local_secrets.json, uploads, nested files and cryptographic keys, and securely export or rotate all secret variables. Never put this material into the public repo or paste secrets into chat.
+IMPORTANT: The local private export retains non-database state in the
+raw directory, but scripts/restore_snapshot.py restores SQLite ONLY.
+Restore other private files and key material separately, securely, and
+verify behavior before cutover. Do not copy raw exports into public Git,
+ChatGPT or a public downloads folder.
 
 ## Target persistent host
 
-An owner-controlled Linux VM on Oracle Cloud Always Free is a candidate, NOT a provisioned resource. Account verification, shape availability and Always Free limits apply. Never upgrade or create chargeable compute/storage without user approval.
+The user has registered an Oracle Cloud account, but no VM is yet connected or provisioned here. Choose a single Always Free VM.Standard.A1.Flex (ARM), 1 OCPU / 6 GB RAM, with Ubuntu Always Free-eligible image and default 50 GB boot disk IN THE HOME REGION. Oracle's current Always Free A1 capacity is 2 OCPUs / 12 GB RAM across the tenancy, with 200 GB combined boot/block volume storage. A1 capacity is not guaranteed. Never upgrade to Pay As You Go or create chargeable resources. See deploy/OCI_ALWAYS_FREE_SETUP.md.
 
 The existing backend is FastAPI plus continuous worker and Telegram polling, with stateful SQLite. Sleeping web apps with ephemeral storage are not equivalent. Render Free loses local filesystem data on restarts and provides no persistent disks.
 
@@ -38,11 +58,11 @@ The existing backend is FastAPI plus continuous worker and Telegram polling, wit
 
 Use a reviewed commit, install Docker and Compose, and keep private state OUTSIDE the public Git checkout. The new helper verifies a manifest and checksums without writing by default:
 
-    python3 scripts/restore_snapshot.py --snapshot /secure-backups/rolehint-api-worker-TIMESTAMP/TIMESTAMP --destination /srv/rolehint/data
+    python3 scripts/restore_snapshot.py --snapshot /secure-backups/rolehint-production-TIMESTAMP/sqlite --destination /srv/rolehint/data
 
 Once independently verified, apply to a NEW destination that does not exist:
 
-    python3 scripts/restore_snapshot.py --snapshot /secure-backups/rolehint-api-worker-TIMESTAMP/TIMESTAMP --destination /srv/rolehint/data --apply
+    python3 scripts/restore_snapshot.py --snapshot /secure-backups/rolehint-production-TIMESTAMP/sqlite --destination /srv/rolehint/data --apply
 
 Replace the example path with the snapshot directory containing manifest.json returned by the exporter. The helper rejects existing destinations, symlink targets, corrupt snapshots, and destinations inside the checkout. It stages a SQLite restore privately and validates it before rename. Restore non-SQLite files/secrets separately with owner-only permissions. Never mix staging and production databases.
 
