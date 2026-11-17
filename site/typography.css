@@ -3,7 +3,9 @@
  * No palette, logo, component layout or product behavior changes.
  */
 :root {
-  --rh-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  --rh-font-sans: 'IBM Plex Sans', Arial, sans-serif;
+  --rh-font-display: 'Hanken Grotesk', Arial, sans-serif;
+  --rh-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
   --rh-type-xs: 0.6875rem;
   --rh-type-sm: 0.8125rem;
   --rh-type-body: 1rem;
@@ -17,7 +19,7 @@
 }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { font-family: var(--rh-font-sans); }
-h1,h2,h3,h4 { font-family: var(--rh-font-sans); text-wrap: balance; }
+h1,h2,h3,h4 { font-family: var(--rh-font-display); text-wrap: balance; }
 p { overflow-wrap: break-word; }
 .hero h1 { font-size: var(--rh-type-display); line-height: var(--rh-leading-head); letter-spacing: var(--rh-tracking-head); font-weight: 700; }
 .hero-lead { font-size: var(--rh-type-lead); line-height: var(--rh-leading-copy); letter-spacing: -0.01em; }
