@@ -34,7 +34,7 @@ On the VM, **do not paste any production secrets** until the backup is verified.
     git clone --depth 1 --branch chore/free-vm-migration-backup-20261110 https://github.com/dokarpov/rolehint.git ~/rolehint-setup
     sudo bash ~/rolehint-setup/scripts/bootstrap_oci_ubuntu.sh
 
-The bootstrap checks Ubuntu ARM64; installs Docker/Compose; prepares /srv/rolehint/data with private permissions; clones the public app source to /opt/rolehint. It does **NOT** start the API, turn on Telegram polling, configure paid services, deploy secrets or set DNS.
+The bootstrap checks Ubuntu ARM64; installs Docker/Compose; prepares the private /srv/rolehint parent directory (but intentionally leaves /srv/rolehint/data absent for the verified restore); clones the public app source to /opt/rolehint. It does **NOT** start the API, turn on Telegram polling, configure paid services, deploy secrets or set DNS.
 
 ## Step 3 — Export from Railway without restarting
 
