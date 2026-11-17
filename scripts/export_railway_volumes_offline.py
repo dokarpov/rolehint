@@ -39,8 +39,15 @@ def private_dir(path: Path) -> Path:
     path = path.resolve()
     if path == ROOT or ROOT in path.parents:
         raise ValueError("Private exports must be outside the public repository")
-    path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(path, 0o700)
+    if path.exists():
+        if not path.is_dir():
+            raise ValueError("Private destination is not a directory")
+        info = path.stat()
+        if info.st_uid != os.getuid() or info.st_mode & 0o077:
+            raise ValueError("Existing destination must belong to user and have private permissions")
+    else:
+        path.mkdir(parents=True, exist_ok=False, mode=0o700)
+        os.chmod(path, 0o700)
     return path
 
 
