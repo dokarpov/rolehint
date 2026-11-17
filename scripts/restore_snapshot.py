@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 import shutil
 import sys
 import tempfile
@@ -70,7 +71,7 @@ def main() -> int:
     a = parser.parse_args()
     try:
         result = restore(a.snapshot, a.destination, apply=a.apply)
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.Error) as exc:
         print(f"RESTORE STOPPED: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, sort_keys=True))
