@@ -12,3 +12,16 @@ local_secrets.json
 local_token.key
 token.json
 credentials.json
+
+# Private Railway export and restored VM state (never commit user CVs or secrets)
+private-backups/
+rolehint-data/
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.pem
