@@ -1,47 +1,65 @@
-# RoleHint — persistent free-VM migration (NOT YET DEPLOYED)
+# RoleHint — free persistent-VM migration and recovery gate
 
-Existing FastAPI + continuous worker + Telegram polling use several SQLite files and local secrets in CFA_DATA_DIR. Therefore a free sleeping/ephemeral host is **not a safe drop-in**. An owner-controlled Linux VM with persistent storage, e.g. Oracle Cloud Always Free ARM (subject to account verification, capacity and usage limits), preserves the current architecture without database refactor. No target cloud VM is connected in this conversation.
+**Status (17 November 2026): preparation only; NOT deployed or cut over.**
+No private databases or credentials have been exported and no target VM is connected.
 
-## 1. Preserve existing data before any service switch
+## Source state verified through Railway
 
-Both existing Railway services have separate /app/data volumes: production rolehint-api-worker → rolehint-sqlite; rolehint-staging → rolehint-staging-sqlite. Never merge, delete or overwrite these volumes. Deploying a new image or changing production before verifying backup is forbidden.
+- Both production and staging are OFFLINE, with no active deployments.
+- Production is rolehint-api-worker, a separate 500 MB rolehint-sqlite volume at /app/data.
+- Staging is rolehint-staging, a separate 500 MB rolehint-staging-sqlite volume at /app/data.
+- Both Railway domains currently fail. Last running deployments were REMOVED on 13 November.
+- The connected Railway tools enumerate volumes and variable names but cannot read mounted files, export database bytes, access SSH, or reveal Telegram/OTP/OAuth secret values.
+- Do not delete, repurpose or overwrite either volume. CI passing is not a data backup.
 
-### One-command SQLite export (on owner's authenticated computer; no redeploy)
+## Blocking dependency: offline Railway data
 
-1. Install the latest [Railway CLI](https://docs.railway.com/cli) and sign in using `railway login`. Railway SSH may ask to register a local SSH key the first time.
-2. Clone the repository and check out branch `chore/free-vm-migration-backup-20261110` (PR #17).
-3. Select an owner-controlled **encrypted local destination outside the public repository** (FileVault or encrypted external volume). Run:
+The exporter scripts/export_railway_snapshots.py needs an accessible RUNNING container through Railway CLI SSH and file download. It **cannot access the currently offline services**. An automatic redeploy can create billable usage, so do not redeploy without explicit approval of that cost and risk or an approved alternative data-export path from Railway. This connected account has no volume-file transfer action.
 
-   ```sh
-   python3 scripts/export_railway_snapshots.py --destination "$HOME/RoleHint-private-backups" --service both
-   ```
+Once Railway access to the live volume becomes available, on an encrypted owner-controlled computer:
 
-The exporter uploads the Python backup helper to the live container's ephemeral `/tmp` (not to the mounted DB volume), invokes the **SQLite online backup API** without restarting or redeploying the app, downloads a snapshot for each of `rolehint-api-worker` and `rolehint-staging`, then checks size, SHA256, `PRAGMA integrity_check`, and reopens a temporary restored copy. No existing DB file or Railway service is changed. Each service writes temporary snapshots under `/tmp/rolehint-export`; those sensitive temporary files will disappear upon container restart but must be considered private until then.
+1. Install Railway CLI from https://docs.railway.com/cli and authenticate with railway login; configure SSH.
+2. Check out this branch exactly.
+3. Run this command:
 
-**The exporter is prepared and has offline unit tests; it has NOT been executed against Railway.** The connector available to ChatGPT does not expose volume contents or interactive SSH, so this step must run from an authenticated owner device. Do not paste DB files, OTP material or CLI access tokens into chat.
+    python3 scripts/export_railway_snapshots.py --destination "$HOME/RoleHint-private-backups" --service both
 
-**Not included in SQLite export:** `local_secrets.json`, encryption keys, uploads and any other non-database state. Back these up separately through the authenticated Railway CLI, into the same encrypted owner-controlled location, and verify them before changing environments. The manifest flags top-level non-DB files, but does not inventory subdirectories. No cutover until all required state has been accounted for.
+The exporter uploads a helper to ephemeral /tmp, uses the SQLite online backup API, downloads each service's database snapshots into separate private folders, then verifies size, SHA256, integrity, and a temporary restore. Its offline tests have passed, but it has NOT been executed against Railway.
 
-### Optional manual Railway CLI commands
+Only top-level SQLite databases are included. Separately preserve local_secrets.json, uploads, nested files and cryptographic keys, and securely export or rotate all secret variables. Never put this material into the public repo or paste secrets into chat.
 
-Railway [service file upload/download](https://docs.railway.com/cli/service) and [SSH](https://docs.railway.com/cli/ssh) support exporting without deploying the PR. The no-deploy route is preferred because the existing volumes must not be disturbed. If the automated export encounters permission/CLI-version errors, stop, inspect the result, and do not blindly retry with destructive volume operations.
+## Target persistent host
 
-## 2. Provision and prepare a free target
+An owner-controlled Linux VM on Oracle Cloud Always Free is a candidate, NOT a provisioned resource. Account verification, shape availability and Always Free limits apply. Never upgrade or create chargeable compute/storage without user approval.
 
-- User must create and verify the VM provider account. Oracle's Always Free provision may require payment-card verification and available ARM capacity; check that no chargeable resources, extra block storage or IPs are selected.
-- Set DNS for a user-controlled HTTPS domain to the VM; firewall 80/443, SSH restricted to user addresses, security updates enabled.
-- Install Docker + Compose, clone this repo at an exact reviewed commit and restore the backups into rolehint-data under the repository directory with protected filesystem permissions.
-- Prepare an untracked .env.vm with PUBLIC_DOMAIN, CFA_RUNTIME_MODE=selfhost, CFA_SEED_DEMO=0, CFA_PUBLIC_BETA_LOCK=1, CFA_PUBLIC_BASE_URL, CFA_WEB_APP_URL, TELEGRAM_MINI_APP_URL and required private bot/OTP/OAuth secret variables. Never commit it. Ensure the bot polling token only has one active bot instance at a time.
-- Start with: docker compose -f deploy/docker-compose.free-vm.yml up -d --build
-- This starts one container running existing start_railway.sh (FastAPI, worker, conditional Telegram bot) and a TLS reverse proxy. It is NOT confirmed to work until tested on the actual VM.
+The existing backend is FastAPI plus continuous worker and Telegram polling, with stateful SQLite. Sleeping web apps with ephemeral storage are not equivalent. Render Free loses local filesystem data on restarts and provides no persistent disks.
 
-## 3. Test and cutover
+## Safe target restore
 
-- Validate /health and 401/403 privacy boundaries, login via Telegram and OTP, exact CV/session persistence, real ATS vacancies and fit/gap display, deletion/recovery, worker scheduling, HTTPS redirects, token protection and full application handoff.
-- Restart containers to prove SQLite survives. Ensure no old/new double Telegram polling bot shares a token.
-- Freeze writes on Railway, take a final consistent snapshot, restore target, update OAuth callback/Mini App/public URLs together, test again before switching public links.
-- Retain Railway services and volumes until the verified target and encrypted offsite backup are confirmed. No live data has been migrated by this PR.
+Use a reviewed commit, install Docker and Compose, and keep private state OUTSIDE the public Git checkout. The new helper verifies a manifest and checksums without writing by default:
 
-## GitHub Actions
+    python3 scripts/restore_snapshot.py --snapshot /secure-backups/rolehint-api-worker-TIMESTAMP/TIMESTAMP --destination /srv/rolehint/data
 
-RoleHint repository is public, so standard GitHub-hosted Actions runners are free. High-frequency failing workflows in PRIVATE repos consume the account's private-runner quota. Use local document/Blender QA plus manually triggered tests and a $0 Actions budget with Stop usage to prevent unexpected charges.
+Once independently verified, apply to a NEW destination that does not exist:
+
+    python3 scripts/restore_snapshot.py --snapshot /secure-backups/rolehint-api-worker-TIMESTAMP/TIMESTAMP --destination /srv/rolehint/data --apply
+
+Replace the example path with the snapshot directory containing manifest.json returned by the exporter. The helper rejects existing destinations, symlink targets, corrupt snapshots, and destinations inside the checkout. It stages a SQLite restore privately and validates it before rename. Restore non-SQLite files/secrets separately with owner-only permissions. Never mix staging and production databases.
+
+deploy/docker-compose.free-vm.yml now defaults to binding /srv/rolehint/data on the VM to /app/data in the container. Customize via ROLEHINT_HOST_DATA_DIR in the untracked .env.vm, loaded with --env-file .env.vm when starting Docker Compose.
+
+Create untracked .env.vm with production values and verified secret material, including PUBLIC_DOMAIN, CFA_PUBLIC_BASE_URL, CFA_WEB_APP_URL, TELEGRAM_MINI_APP_URL, CFA_DATA_DIR=/app/data, CFA_SEED_DEMO=0, CFA_PUBLIC_BETA_LOCK=1, and confirmed CFA_RUNTIME_MODE/OAuth/session/Telegram settings. Do not guess or commit secrets. Start only after private state is restored:
+
+    docker compose --env-file .env.vm -f deploy/docker-compose.free-vm.yml up -d --build
+
+## Required acceptance before public cutover
+
+1. Source and destination private backups separately verified and all non-SQLite state inventoried.
+2. HTTPS and /health pass; authenticated sessions, auth boundaries and privacy paths are verified.
+3. CV upload, editable reviewed facts, real ATS vacancies, fit/gap, specific draft/export and truthful employer handoff work end to end.
+4. Telegram/OTP login works with exactly one active Telegram polling bot.
+5. SQLite survives container restarts; deletion/recovery and cross-account isolation pass.
+6. Final Railway write freeze, fresh source snapshot, verified target restore, coordinated OAuth/Telegram/public URLs and only then DNS cutover.
+7. Retain old Railway volumes and encrypted backups until full acceptance.
+
+**No new VM, private data export, production migration or cutover has been completed by this PR.**
