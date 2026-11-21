@@ -35,7 +35,12 @@ def preflight_employer_source(job, *, now=None, max_age_seconds=21600):
         return {"decision": "VERIFY_FIRST", "reason": "source_not_direct_ats"}
     if host not in ATS_HOSTS[source]:
         return {"decision": "VERIFY_FIRST", "reason": "source_host_mismatch"}
-    if not job.get("company") or not job.get("source_job_id"):
+    company = job.get("company")
+    source_job_id = job.get("source_job_id")
+    if (not isinstance(company, str) or not company.strip()
+            or source_job_id is None or isinstance(source_job_id, bool)
+            or not isinstance(source_job_id, (str, int))
+            or not str(source_job_id).strip()):
         return {"decision": "VERIFY_FIRST", "reason": "missing_employer_identity"}
     if job.get("source_status") == "closed":
         return {"decision": "DO_NOT_APPLY", "reason": "closed_vacancy"}
