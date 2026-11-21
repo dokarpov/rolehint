@@ -26,6 +26,15 @@ def test_contractual_and_currency_unknowns():
     constraints["currency"]="EUR"
     assert evaluate_constraints(constraints,prefs)["hard"]
 
+
+def test_closed_or_mismatched_employer_source_is_not_qualified():
+    prefs={"remote_only":False,"allow_relocation":True}
+    job={"company":"Acme","title":"Product Manager","source":"ashby",
+         "source_job_id":"123","source_url":"https://jobs.ashbyhq.com/acme/123",
+         "description":"Design and lead product research"}
+    assert is_qualified({**job,"source_status":"closed"},prefs,False)[0] is False
+    assert is_qualified({**job,"source_url":"https://jobs.lever.co/acme/123"},prefs,False)[0] is False
+
 def test_real_job_review_handoff_history(monkeypatch):
     monkeypatch.setenv("CFA_WEB_APP_URL",BASE)
     uid=product.ensure_user(telegram_user={"id":90000000+int(uuid.uuid4().int%10000000),"first_name":"QA"})
@@ -70,3 +79,16 @@ def test_real_job_review_handoff_history(monkeypatch):
         assert item["already_submitted"] is True
         assert item["employer_rejected_before"] is True
         assert client.post("/web-api/jobs/"+job_id+"/handoff",headers={"Origin":BASE}).status_code==409
+        # A saved listing can never redirect the user to a lookalike ATS domain.
+        phishing=product.upsert_user_job(uid,{**j,
+            "source_job_id":"qa-poison-"+uuid.uuid4().hex,
+            "title":"Phishing source QA",
+            "source_url":"https://jobs.ashbyhq.com.evil.test/acme/role"})
+        denied=client.post("/web-api/jobs/"+phishing["job_id"]+"/handoff",headers={"Origin":BASE})
+        assert denied.status_code==409,denied.text
+        # A known closed employer posting is not a valid application handoff.
+        closed=product.upsert_user_job(uid,{**j,
+            "source_job_id":"qa-closed-"+uuid.uuid4().hex,
+            "title":"Closed vacancy QA","source_status":"closed"})
+        denied=client.post("/web-api/jobs/"+closed["job_id"]+"/handoff",headers={"Origin":BASE})
+        assert denied.status_code==409,denied.text

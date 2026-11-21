@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from fastapi import HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from .services.job_search import JobSearchService
+from .services.employer_source_preflight import preflight_employer_source
 from .services.auto_match import AutoMatchService
 from .services.auto_match.service import extract_constraints, evaluate_constraints
 from .services.application_packs import markdown as pack_markdown
@@ -31,6 +32,10 @@ def is_qualified(job,prefs,contractor_only):
         return False,"Not a directly supported employer ATS source"
     if not (job.get("source_job_id") or job.get("canonical_key")):
         return False,"Missing stable ATS identity"
+    verification=preflight_employer_source(job)
+    if (verification["decision"]=="DO_NOT_APPLY" or verification["reason"] in
+            {"invalid_source_url","intermediary_source","source_host_mismatch","source_not_direct_ats"}):
+        return False,verification["reason"]
     if evaluate_constraints(extract_constraints(job),prefs).get("hard"):
         return False,"Hard eligibility blocker"
     if contractor_only and contract_signal(job)=="incompatible":
@@ -164,7 +169,8 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
                 "contractor_status":contract_signal(raw),
                 "already_submitted":job_id in applied,
                 "employer_rejected_before":job["company"].casefold() in rejections,
-                "freshness":"Retrieved from employer ATS; confirm the vacancy is still open before submitting."}
+                "source_preflight":preflight_employer_source(raw),
+                "freshness":"ATS listing retrieval is not a live application-form check. Confirm the opening before submitting."}
 
     @router.get("/jobs/{job_id}/pack")
     def get_pack(request:Request,job_id:str):
@@ -199,6 +205,11 @@ def bind_web_release(router,product,require_user,check_origin,search_service=Non
         url=str(job.get("source_url") or "")
         parsed=urlsplit(url)
         if parsed.scheme!="https" or not parsed.netloc:raise HTTPException(422,"Employer application URL unavailable")
+        source_record={**(job.get("payload") or {}),"source_url":url,"company":job["company"]}
+        verification=preflight_employer_source(source_record)
+        if (verification["decision"]=="DO_NOT_APPLY" or verification["reason"] in
+                {"invalid_source_url","intermediary_source","source_host_mismatch","source_not_direct_ats"}):
+            raise HTTPException(409,"Employer source is closed or not a trusted ATS application URL")
         if any(s["job_id"]==job_id for s in product.submissions(uid)):
             raise HTTPException(409,"This opening is already recorded as submitted")
         now=time.time()

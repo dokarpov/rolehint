@@ -1,5 +1,6 @@
 import httpx
 from .base import JobSource
+from .source_evidence import annotate_listing
 
 class LeverBoardSource(JobSource):
     name="lever"
@@ -16,10 +17,10 @@ class LeverBoardSource(JobSource):
                     if query.lower() not in hay:
                         continue
                     cats=x.get("categories") or {}
-                    out.append({
+                    out.append(annotate_listing({
                       "source":"lever","source_job_id":x.get("id"),"source_url":x.get("hostedUrl") or x.get("applyUrl",""),
                       "company":site,"title":x.get("text",""),"location":cats.get("location"),
                       "remote":None,"salary_min":None,"salary_max":None,"currency":None,
                       "description":x.get("descriptionPlain",""),"posted_at":None
-                    })
+                    }))
         return out
