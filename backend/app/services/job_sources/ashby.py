@@ -1,5 +1,6 @@
 import httpx
 from .base import JobSource
+from .source_evidence import annotate_listing
 
 class AshbyBoardSource(JobSource):
     name="ashby"
@@ -18,10 +19,10 @@ class AshbyBoardSource(JobSource):
                     title=x.get("title","").lower()
                     if not qwords or not all(w in title for w in qwords):
                         continue
-                    out.append({
+                    out.append(annotate_listing({
                       "source":"ashby","source_job_id":x.get("id"),"source_url":x.get("jobUrl") or x.get("applyUrl",""),
                       "company":board,"title":x.get("title",""),"location":x.get("location"),
                       "remote":x.get("isRemote"),"salary_min":None,"salary_max":None,
                       "currency":None,"description":x.get("descriptionPlain",""),"posted_at":x.get("publishedAt")
-                    })
+                    }))
         return out
