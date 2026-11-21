@@ -21,6 +21,23 @@ class EmployerSourcePreflightTests(unittest.TestCase):
         self.assertEqual(preflight_employer_source({**BASE, "application_form_verified": False})["decision"], "VERIFY_FIRST")
     def test_missing_requirements(self):
         self.assertEqual(preflight_employer_source({**BASE, "hard_requirements_checked": False})["decision"], "VERIFY_FIRST")
+    def test_rejects_blank_employer_identity(self):
+        for payload in (
+            {**BASE, "company": "  "},
+            {**BASE, "company": None},
+            {**BASE, "source_job_id": " \t"},
+            {**BASE, "source_job_id": None},
+            {**BASE, "source_job_id": True},
+            {**BASE, "source_job_id": []},
+        ):
+            with self.subTest(payload=payload):
+                result = preflight_employer_source(payload)
+                self.assertEqual(result["decision"], "VERIFY_FIRST")
+                self.assertEqual(result["reason"], "missing_employer_identity")
+
+    def test_numeric_ats_job_id_is_accepted(self):
+        self.assertEqual(preflight_employer_source({**BASE, "source_job_id": 123})["decision"], "SOURCE_VERIFIED")
+
     def test_bad_url(self):
         self.assertEqual(preflight_employer_source({**BASE, "source_url": "http://example.com/job"})["reason"], "invalid_source_url")
     def test_aggregator_not_verified(self):
