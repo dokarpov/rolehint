@@ -1,10 +1,12 @@
 import unittest
+from datetime import datetime, timezone
 from app.services.employer_source_preflight import preflight_employer_source
 
 BASE = dict(source="ashby", source_url="https://jobs.ashbyhq.com/example/123",
             company="Example", source_job_id="123", source_status="open",
             application_form_verified=True, geographic_eligibility="eligible",
-            hard_requirements_checked=True)
+            source_checked_at=datetime.now(timezone.utc).isoformat(),
+            source_check_method="ats_listing_api", hard_requirements_checked=True)
 
 class EmployerSourcePreflightTests(unittest.TestCase):
     def test_verified(self):
