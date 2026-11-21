@@ -1,5 +1,6 @@
 import asyncio
 from .jobs import dedupe
+from .employer_source_preflight import preflight_employer_source
 from .job_sources.adzuna import AdzunaSource
 from .job_sources.jooble import JoobleSource
 from .job_sources.ashby import AshbyBoardSource
@@ -29,4 +30,9 @@ class JobSearchService:
         jobs=[]
         for r in results:
             if isinstance(r,list): jobs.extend(r)
-        return dedupe(jobs)
+        unique = dedupe(jobs)
+        # Add evidence gate without altering existing search results or fit policy.
+        # The ATS adapters must verify live forms and eligibility separately.
+        for job in unique:
+            job["employer_source_preflight"] = preflight_employer_source(job)
+        return unique
