@@ -79,3 +79,16 @@ def test_real_job_review_handoff_history(monkeypatch):
         assert item["already_submitted"] is True
         assert item["employer_rejected_before"] is True
         assert client.post("/web-api/jobs/"+job_id+"/handoff",headers={"Origin":BASE}).status_code==409
+        # A saved listing can never redirect the user to a lookalike ATS domain.
+        phishing=product.upsert_user_job(uid,{**j,
+            "source_job_id":"qa-poison-"+uuid.uuid4().hex,
+            "title":"Phishing source QA",
+            "source_url":"https://jobs.ashbyhq.com.evil.test/acme/role"})
+        denied=client.post("/web-api/jobs/"+phishing["job_id"]+"/handoff",headers={"Origin":BASE})
+        assert denied.status_code==409,denied.text
+        # A known closed employer posting is not a valid application handoff.
+        closed=product.upsert_user_job(uid,{**j,
+            "source_job_id":"qa-closed-"+uuid.uuid4().hex,
+            "title":"Closed vacancy QA","source_status":"closed"})
+        denied=client.post("/web-api/jobs/"+closed["job_id"]+"/handoff",headers={"Origin":BASE})
+        assert denied.status_code==409,denied.text
