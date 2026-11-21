@@ -54,7 +54,10 @@
 - [ ] Validate Telegram OTP on actual iPhone and desktop; cross-account session security.
 - [ ] Verify CV import, source attribution, revisions, and cross-device restore.
 - [ ] Keep distinctive visual CV templates and machine-readable PDF/DOCX content paths.
-- [ ] Restore Railway API/staging only after scope, volume persistence and costs are confirmed; smoke test real deployment.
+- [ ] Complete Oracle Cloud Always Free cutover per PR #17 only after encrypted Railway exports, verified restore, preserved SQLite volume data, OCI VM availability, and verified zero paid resources; smoke test the new backend. Do not restart Railway merely to satisfy legacy smoke checks.
+
+## Hosting migration dependency (PR #17)
+RoleHint's selected destination is Oracle Cloud Always Free A1 VM hosting the existing FastAPI/SQLite stack, **not a new database engine**. The migration preparation PR is `chore/free-vm-migration-backup-20261110` (#17). Its offline volume export and restore tools exist but **no real source data has been exported or restored, no Oracle VM is provisioned/connected, and no cutover occurred**. Changes in this PR (#20) are application code only and MUST be integrated into the Oracle deployment build after the source backup verification. Do not replace or overwrite production SQLite volumes. Only one Telegram polling process may run after cutover.
 
 ## Current deployment blocker (21 November 2026)
 GitHub Actions backend test passed on PR #20, while `deployed-smoke` failed with HTTP 404 at `https://rolehint-api-worker-production.up.railway.app/health`. Railway confirms the latest listed production and staging deployments are REMOVED (30 October and 4 November). Do not claim this PR is released or the service is online.
