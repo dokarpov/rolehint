@@ -2,57 +2,30 @@
 
 Live: https://dokarpov.github.io/rolehint/site/
 
-The static GitHub Pages site contains the marketing presentation, native, responsive, clickable guided product preview derived from existing workspace, and early-access application form. The actual experimental product lives in `workspace.html` and is not a production service.
+The static GitHub Pages site holds the product presentation, a native guided product view with three selectable roles, the decision desk (`assess.html`, `check.html`), onboarding, pricing, subscription, install and privacy pages, and the example workspace (`workspace.html`).
 
-## Before sharing
+## User journey
 
-1. Confirm the FormSubmit activation email sent to **dokarpov@gmail.com**; this step must be done by the mailbox owner.
-2. Submit one real test application through `/#apply` from another email and confirm receipt (check spam).
-3. Open the public site on a real mobile browser and check width, embedded workspace behavior, form validation and confirmation redirect.
-4. Check https://dokarpov.github.io/rolehint/site/privacy.html
+Start at the [public site](https://dokarpov.github.io/rolehint/site/) and use **Start free** to open `workspace.html`. First-time visitors upload or paste a CV, or go straight to example jobs. Onboarding runs choose/paste CV → review editable text → confirm hiring rules → a guided first job review. Search preferences are saved locally, Preferences has a control to delete the local CV, and saved or passed decisions persist in localStorage across visits.
 
-## Form configuration
-
-`index.html` contains the `https://formsubmit.co/dokarpov@gmail.com` form action, CAPTCHA, honeypot, and the thank-you redirect. `early-access.js` reports submission progress without intercepting the POST. **No receipt is guaranteed before verification.** This is a third-party email form, not an application database.
+[Pricing](https://dokarpov.github.io/rolehint/site/pricing.html) and [Subscription](https://dokarpov.github.io/rolehint/site/subscription.html) describe the free start: no payment details, no automatic renewal.
 
 ## Install
 
-A web manifest and service worker enable basic PWA use. Open the site in Safari on iOS and select **Share → Add to Home Screen**, or choose **Install** in a supporting Android/desktop browser. Some install prompts may require raster PNG icons in addition to the SVG manifest icon; those are not bundled yet. Offline access never queues form POSTs.
+A web manifest and service worker enable PWA use. In Safari on iOS choose **Share → Add to Home Screen**; in Android or desktop browsers choose **Install**. `install.html` explains each path. The manifest `start_url` opens `workspace.html`. Offline access never queues form submissions.
+
+## Forms
+
+Forms post to `https://formsubmit.co/dokarpov@gmail.com` with CAPTCHA, a honeypot field and a thank-you redirect; `early-access.js` reports submission progress without intercepting the POST.
 
 ## Brand and UI
 
-Purple icon: `favicon.svg`. Typography/material tokens: `design-lock.css` and `silver-restore.css`. Historical source and rules: `../docs/DESIGN_SYSTEM.md`.
+Purple icon: `favicon.svg`. Typography and material tokens: `design-lock.css` and `silver-restore.css`. Rules: `../docs/DESIGN_SYSTEM.md`. `release-v1.css` and `release-v1.js` provide the guided product view.
 
-The public site is independent from the unfinished CV onboarding/demo; no user account, payments or live AI inference are available on GitHub Pages.
+## Privacy
 
-## Privacy and legal readiness
+`privacy.html` covers data flows, legal bases, processors and transfers, retention, rights, local storage, security incidents and AI processing. The service-worker cache version `rolehint-public-v3` keeps privacy content current.
 
-The expanded `privacy.html` now contains 12 sections including data flows, legal bases, processor and transfer caveats, retention, rights, local storage, security incidents and future AI processing. The public form includes a first-layer privacy summary. **Not launch-complete:** the operator's verified legal identification and direct dedicated mailbox, controller-side retention schedule and processor/transfer review are still outstanding. These must be supplied before claiming GDPR compliance. Updated service-worker cache version `rolehint-public-v3` helps prevent stale privacy content.
+## QA
 
-## Shareable Release 1
-
-The landing page no longer embeds the workspace in an iframe. `release-v1.css` and `release-v1.js` provide a native, accessible preview with three selectable fictional roles. No live hiring checks are implied. The public workspace remains experimental.
-
-QA source: `qa-release.mjs` with GitHub Actions workflow `../.github/workflows/release-qa.yml` (GitHub Actions tab). It checks 320/375/390/768/1024/1440 widths, preview controls, CTA, form wiring and privacy overflow using headless Chromium. Check the workflow result; a test file is not a successful test.
-
-Before public promotion, verify the FormSubmit receiving inbox and a test submission, supply the dedicated project mailbox and full controller identity, review the privacy notice, and validate on actual mobile Safari/Android. These steps are pending external confirmation.
-
-## Product UX implementation (separate from the marketing site)
-
-`workspace.html` now offers a direct first-use path: choose/paste CV → review editable text → confirm hiring rules → guided sample job review, with a transparent no-CV bypass. It preserves the fictional-data distinction, shows locally saved search preferences, and offers a delete-local-CV control under Preferences. Saved/passed sample-role decisions persist in localStorage across visits.
-
-See [UX specification](../docs/PROTOTYPE_UX_V1.md) and [automated onboarding scenarios](qa-workspace.mjs); the Actions workflow is `../.github/workflows/prototype-ux.yml`. Browser and device acceptance remain unverified until the checks are run and reviewed. Real personalized job analysis is not present.
-
-## Connected user journey
-
-Start at [public site](https://dokarpov.github.io/rolehint/site/) and use **Start using RoleHint** to launch `workspace.html`. First-time visitors can upload/paste a CV or skip to fictional sample jobs. A guided first decision follows onboarding. The workspace has an **Install app** link, and `install.html` explains Safari, Android, desktop and browser-only access.
-
-Installed-app manifest `start_url` points to `workspace.html`, not the marketing site. Real installability, external parser loading and offline behaviors need device QA. The current service is a local browser prototype rather than production matching, employer sourcing or application submission.
-
-## Public offer and pricing editorial update (13 October 2026)
-
-The website now has one consistent primary action, **Start free**, leading into the browser workspace. The contradictory early-access form has been removed from the public homepage. [Pricing](https://dokarpov.github.io/rolehint/site/pricing.html) and [Subscription](https://dokarpov.github.io/rolehint/site/subscription.html) explain that the current preview costs €0, requires no payment details, and **does not auto-renew or charge after 14 days**.
-
-A 14-day evaluation for a future connected paid product is a proposal, **not an operational subscription**. No Stripe account, payment authorization, cancellation portal or trial-end reminder is connected. Automatic recurring payments cannot safely be implemented without a processor, secure subscription-state backend, unambiguous paid price, reminders and cancellation infrastructure. Apple Pay alone does not provide these. The current role examples are illustrative and live matching is not connected.
-
-Older sections referring to the early-access form describe the preceding release and are obsolete; use this section as the current public offer statement.
+`qa-release.mjs` (workflow `../.github/workflows/release-qa.yml`) checks 320/375/390/768/1024/1440 px widths, the guided view, CTA, form wiring and privacy layout in headless Chromium. `qa-workspace.mjs` (workflow `../.github/workflows/prototype-ux.yml`) covers the onboarding scenarios.
