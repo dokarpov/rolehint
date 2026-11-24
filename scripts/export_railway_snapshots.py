@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 PROJECT = "e48095fc-fb0f-4e59-bf34-d30418e5198f"
+ENVIRONMENT = "40688d3e-9562-44c7-8431-3ce9c9687601"
 SERVICES = ("rolehint-api-worker", "rolehint-staging")
 REMOTE_HELPER = "/tmp/rolehint_backup_data.py"
 REMOTE_BASE = "/tmp/rolehint-export"
@@ -56,10 +57,10 @@ def export_service(service: str, dest: Path) -> Path:
     if not helper.is_file():
         raise FileNotFoundError(f"Missing backup helper: {helper}")
     print(f"[{service}] uploading read-only backup helper to ephemeral /tmp")
-    run(["railway", "service", "files", "-p", PROJECT, "-s", service,
+    run(["railway", "service", "files", "-p", PROJECT, "-e", ENVIRONMENT, "-s", service,
          "upload", str(helper), REMOTE_HELPER])
     print(f"[{service}] taking an online SQLite snapshot")
-    output = run(["railway", "ssh", "-p", PROJECT, "-s", service, "--",
+    output = run(["railway", "ssh", "-p", PROJECT, "-e", ENVIRONMENT, "-s", service, "--",
                   "python", REMOTE_HELPER, "--data-dir", "/app/data",
                   "--output-base", REMOTE_BASE])
     remote_folder = read_snapshot_location(output)
@@ -68,7 +69,7 @@ def export_service(service: str, dest: Path) -> Path:
     if local.exists():
         raise FileExistsError(f"Refusing to overwrite an existing backup: {local}")
     print(f"[{service}] downloading to private local storage")
-    run(["railway", "service", "files", "-p", PROJECT, "-s", service,
+    run(["railway", "service", "files", "-p", PROJECT, "-e", ENVIRONMENT, "-s", service,
          "download", remote_folder, str(local)])
     manifests = list(local.rglob("manifest.json")) if local.is_dir() else []
     if len(manifests) != 1:
