@@ -15,11 +15,15 @@ import re
 import shutil
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 PROJECT = "e48095fc-fb0f-4e59-bf34-d30418e5198f"
 ENVIRONMENT = "40688d3e-9562-44c7-8431-3ce9c9687601"
 SERVICES = ("rolehint-api-worker", "rolehint-staging")
+STAGING_HEALTH_URL = "https://rolehint-staging-production.up.railway.app/health"
 REMOTE_HELPER = "/tmp/rolehint_backup_data.py"
 REMOTE_BASE = "/tmp/rolehint-export"
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,10 +56,30 @@ def read_snapshot_location(stdout: str) -> str:
     raise ValueError("No verified backup location returned by Railway SSH")
 
 
+
+def wake_staging() -> None:
+    """Railway serverless staging sleeps between requests; wake before SSH/files."""
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(STAGING_HEALTH_URL, timeout=30):
+                return
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (502, 503, 504) or attempt == 2:
+                raise RuntimeError(f"Staging wake-up HTTP {exc.code}; backup not started") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt == 2:
+                raise RuntimeError("Staging health check unavailable; backup not started") from exc
+        time.sleep(3)
+    raise RuntimeError("Staging could not wake; backup not started")
+
+
 def export_service(service: str, dest: Path) -> Path:
     helper = ROOT / "backend" / "backup_data.py"
     if not helper.is_file():
         raise FileNotFoundError(f"Missing backup helper: {helper}")
+    if service == "rolehint-staging":
+        print("[rolehint-staging] waking sleeping Railway service over HTTPS")
+        wake_staging()
     print(f"[{service}] uploading read-only backup helper to ephemeral /tmp")
     run(["railway", "service", "files", "-p", PROJECT, "-e", ENVIRONMENT, "-s", service,
          "upload", str(helper), REMOTE_HELPER])
